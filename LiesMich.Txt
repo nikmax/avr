@@ -1,0 +1,863 @@
+﻿Programm gavrasm
+
+AVR Assembler fuer ATMEL AVR-Prozessoren
+========================================
+
+Kommandozeilen Assembler fuer ATMEL AVR-Prozessoren der Typenreihen
+- AT90S,
+- AT90CAN,
+- AT90USB,
+- ATtiny,
+- ATmega,
+- ATXmega, und
+- ATA.
+
+Fuer Linux i386-x64 compilierte ausfuehrbare Datei: gavrasm
+Fuer Win64 compilierte ausfuehrbare Datei: gavrasm.exe
+Quellcode in fpc-Pascal
+
+Aufrufe und Optionen
+--------------------
+
+Aufruf: gavrasm [-abelmqswxz] quelldatei[.asm]
+   Parameter:
+     a: Ausgabe von ANSI-Zeichen umschalten (An/Aus)
+        Default ist An (Linux) bzw. Aus (Win)
+     b: Erweiterte Syntaxkommentierung fuer Anfaenger (nur bei e!)
+        Default ist Aus (kein zusaetzlicher Kommentar)
+     e: Laengeres, ausfuehrlicheres Format fuer Fehlermeldungen
+        Default ist Aus (kurze Fehlermeldungen)
+     l: Ausgabe der LIST-Datei unterdruecken
+        Default ist LIST-Datei-Ausgabe an
+     m: Expansion von Makros listen
+        Default ist List aus
+     p: Akzeptiere EEPROM-Sequenzen oberhalb EEPROM Limit
+        Default ist EEPROM-Adressen-Pruefung
+     q: Keine Ausgabe von Meldungen auf der Kommandozeile (quiet)
+        Ausnahme: Erzwungene Meldungen (.MESSAGE)
+        Default ist Ausgabe eingeschaltet
+     s: Ausgabe der Liste der Symbole im Listing an
+        Default ist keine Symbolliste
+     w: Ermoegliche Wrap-around
+        Default ist Wrap-Around ausgeschaltet
+     x: Benutze nicht die internen def.inc-Informationen
+        Default ist die Verwendung interner def.inc-Informationen
+     z: Definiert die Konstanten NOW_Y (Jahr), NOW_M (Monat),
+        NOW_D (Tag) als Bytes mit dem zur Assemblierzeit aktuellen
+        Datum des Betriebssystems. In der Konstanten NOW_I befindet
+        sich die Anzahl Tage seit dem 1.1.1990 als Ganzzahlwert.        
+   Ausgabedateien:
+     quelldatei.lst ... Assembler-Listing, Textdatei
+     quelldatei.hex ... Code im Format Intel-Hex, Textdatei
+     quelldatei.eep ... EEPROM-Inhalt im Format Intel-Hex, Textdatei
+                        (Datei wird wieder gelöscht, wenn kein .ESEG-
+                        Inhalt erzeugt wurde)
+     quelldatei.err ... Fehlermeldungen falls zutreffend, Textdatei
+
+Aufruf: gavrasm [-?hdt]
+   Parameter:
+     ?: Liste der Optionen auf der Kommandozeile
+     h: Liste der Optionen auf der Kommandozeile
+     d: Liste der unterstuetzten Direktiven
+     t: Liste der unterstuetzten AVR-Typen
+
+Erlaeuterung zur A-Option:
+   Unter Linux ist die Ausgabe von ANSI-Codesequenzen per
+   Default eingeschaltet, bei anderen OS abgeschaltet. Mit der
+   A-Option wird diese Voreinstellung bei allen Betriebs-
+   systemen invertiert.
+
+Rückkehr-Ergebnisse (%errorlevel%):
+   0: Assemblierung ohne Fehler ausgeführt
+   1: Assemblierung mit Fehler(n)
+   2: Fataler interner Fehler
+
+Eigenschaften des Assemblers
+----------------------------
+Im folgenden sind nur die Besonderheiten dieses Assemblers
+beschrieben. In der Regel ist dieser Assembler kompatibel mit
+anderen AVR-Assemblern (z.B. dem ATMEL(R)-Assembler).
+
+a) Unterschiede dieses Assemblers, die zu Fehlermeldungen und
+   Warnungen bei Code fuehren, der unter anderen Assemblern
+   fehlerfrei assembliert wird
+* Die Header-Dateien von ATMEL(R), die die Symbole des ver-
+  wendeten AVR-Typs enthalten, koennen mit der .INCLUDE-
+  Direktive angegeben werden. Die Angaben zu der Datei
+  werden aber in der Default-Einstellung von gavrasm ignoriert,
+  die Datei wird nicht gelesen und muss auch gar nicht vorhanden
+  sein. Stattdessen wird aus dem angegebenen Dateinamen der
+  AVR-Typ extrahiert und die intern im gavrasm gespeicherten
+  Symbole fuer diesen Typ gesetzt.
+  Dies sollte man beachten fuer den Fall, dass die Header-
+  Dateien vom User manuell geaendert oder ergaenzt wurden.
+  gavrasm ignoriert wegen dieses Verhaltens die in der
+  Headerdatei vorgenommenen Aenderungen. Um dies zu
+  signalisieren wird eine Warnung ausgegeben, sie ist nur
+  in dem Fall relevant, in dem die def.inc-Datei manuell
+  geaendert wurde.
+  Diese Automatik kann umgangen werden, indem entweder der
+  Namensbestandteil "def.inc" der Headerdatei veraendert
+  wird, und damit die Erkennung der Headerdatei unterbunden
+  wird, oder indem der Schalter x in der Kommandozeile
+  angegeben wird. Die Angabe von x auf der Kommandozeile
+  führt dazu, dass alle Include-Dateien ausgewertet werden.
+  Die ausgegebene Warnung kann ferner dadurch vermieden
+  werden, indem der AVR-Typ mit der .device-Direktive ange-
+  geben wird. Dies bindet, im Unterschied zum ATMEL Assembler,
+  ebenfalls die intern gespeicherten Symbole ein. Bei Typen,
+  die LD-Instruktionen ausfuehren (nicht: z. B. ATtiny12)
+  werden auch die Register XL, XH, YL, YH, ZL und ZH defi-
+  niert.  
+* Dateinamen (z.B. in der INCLUDE-Direktive) muessen nicht
+  in Gaensefueszen angegeben werden. Dies gilt nicht fuer die
+  Linux-Version, hier muessen Dateinamen in Gaensefueszen ein-
+  geschlossen werden ("...").
+* Absolutwerte z.B. bei Sprungdistanzen werden bereits dann
+  erkannt, wenn die Sprungdistanz durch ein Vorzeichen
+  eingeleitet wird, wie z.B. " brcc +10". Die Verwendung der
+  Schreibweise PC+10 ist optional und gleichwertig.
+* Ein wichtiger Unterschied zu anderen Assemblern ist bei
+  gavrasm die Verarbeitung von Texten. Die Verwendung dieser
+  Features bedingt gegebenenfalls Inkompatibilitaet des Quell-
+  codes zu anderen Assemblern. Die Unterschiede im Einzelnen:
+  - In Textpassagen kann ein doppeltes Anfuehrungszeichen ""
+    verwendet werden, um ein Anfuehrungszeichen in den Text
+    einzufuegen. Andere Assembler quittieren dies mit "garbage
+    at end of line" und ignorieren den Text nach dem doppel-
+    ten Anfuehrungszeichen.
+  - Beim Auftreten des Semikolons ; in einer ASCII-Konstante
+    (';') oder einem Text ("...;...") bemaengeln andere As-
+    sembler dies mit einer Fehlermeldung, da das Semikolon
+    faelschlich als Kommentarzeichen interpretiert wird. In
+    gavrasm ist das Semikolon in Konstanten und Texten zu-
+    laessig und wird korrekt verarbeitet.
+  - Beim Einfuegen von nicht druckbaren ASCII-Steuerzeichen
+    in Texte mittels \ (z.B. "...\m\j\@") interpretieren
+    andere Assembler dieses Steuerzeichen nicht wie gavrasm.
+    Diese uebersetzen \ stattdessen als ASCII-Zeichen. Nur
+    bei einer ungeradzahligen Anzahl macht sich dies mit
+    einer Warnung bemerkbar, die Anzahl Zeichen in der Text-
+    konstante sei ungerade und es werde ein Nullzeichen ein-
+    gefuegt.
+  - In .DB eingeschlossene Texte werden auf Datum-, Zeit- und
+    Sourcecodeschluesselworte untersucht und diese durch die
+    entsprechenden aktuellen Werte ersetzt. Erkannt werden:
+    %YEAR%, %MONTH%, %DAY%, %HOUR%, %MINUTE%, %SOURCE%
+    Bitte beachten, dass diese Schluesselworte nur in Gross-
+    buchstaben-Schreibweise erkannt werden! Im Listing sind
+    die Werte ersetzt.
+* Die .ERROR-Direktive verlangt bei gavrasm einen Text als
+  Parameter, bei dem ATMEL-Assembler nicht. Der Text macht
+  Sinn, weil man ja wissen moechte, was genau den Error ver-
+  ursacht hat. Beim ATMEL-Assembler in frueheren Versionen
+  war dazu eine zusaetzliche .MESSAGE-Direktive notwendig.
+* Bei den Instruktionen BRBC und BRBS wurden in gavrasm die
+  Bit-Konstanten C, Z, N, V, S, H, T, I in Version 3.2
+  standardmaessig definiert. Die Verwendung der Ein-Buchstaben-
+  Formulierung fuehrt ab Version 3.3 zu einer Fehlermeldung
+  (Symbol nicht definiert).
+  Hinweis: Diese Bit-Konstanten sind in den meisten def.inc-
+  Dateien als SREG_X definiert und sollten im Quellcode auch
+  so verwendet werden. Ausnahmen sind die def.inc-Dateien der
+  Typen AT90S2333, ATmega83, ATmega104 und ATmega161C. Mit
+  der Direktive .IFNDEF koennen die Ein-Buchstaben-Konstan-
+  ten bedingt definiert werden, wenn diese benoetigt werden.
+* Die neuere Syntax bei der Angabe von Registerpaaren, was
+  die Instruktionen MOVW, ADIW und SBIW betrifft, wurde um
+  die Schreibweise R[n+1]:R[n] erweitert. Urspruenglich war
+  es ueblich, bei Registerpaaren nur das untere der beiden
+  Register anzugeben (LSB). Die Schreibweise R[n+1]:R[n] ist
+  eigentlich trivial und ueberfluessig, weil schon die
+  Angabe des LSB vollkommen ausreicht. Diese Schreibweise
+  wurde dennoch implementiert, um Kompatibilitaet zu errei-
+  chen. Darueber hinaus ist nun auch die Schreibweise X, Y
+  und Z korrekt. Bitte beachten: das Doppelregister-Paar
+  R25:R24 hat keine solche Abkuerzung! 
+* Die Funktionen BYTE5 bis BYTE8 fuer den Zugriff auf die
+  hoeheren Bytes von Int64-Integer-Zahlen sind in anderen
+  Assemblern moeglicherweise nicht implementiert.
+* Wenn die Option -z gesetzt ist, koennen die Datumskonstan-
+  ten NOW_D, NOW_M, NOW_Y und NOW_I verwendet werden. Da
+  dies beim Assemblieren mit einem anderen Assembler zu
+  Fehlermeldungen fuehrt, muessen diese verwendeten Konstan-
+  ten in diesem Fall manuell eingefuegt werden. Das kann mit
+  der Direktive .IFNDEF NOW_I auch bedingt erfolgen, so dass
+  beim Assemblieren mit gavrasm die Systemzeit und nicht die
+  manuell eingefuegten Konstanten verwendet werden.
+* gavrasm erzeugt eine Fehlermeldung, wenn das gleiche Regi-
+  ster mit dem gleichen Namen noch einmal definiert wird.
+  Andere Assembler quittieren dies nur mit einer Warnung.
+  Nicht als Fehler behandelt wird der Fall, dass ein und
+  das gleiche Register mit verschiedenen Namen definiert
+  wird.
+* Soll ein Quellcode gleichzeitig mit gavrasm und einem
+  anderen Assembler kompatibel gemacht werden, kann dies
+  mit der folgenden Methode erfolgen. Die Methode macht sich
+  zunutze, dass nur in gavrasm der eingesetzte AVR-Typ
+  als Symbol vorhanden ist. Wenn man dieses Symbol mit
+  .ifdef ATmega8A abfragt und TRUE erhaelt, ist gavrasm am
+  Werk, wenn nicht ist es ein anderer Assembler und es kann
+  dessen Formulierung im .else-Zweig geschrieben werden.
+  Das funktioniert natuerlich nur dann, wenn der AVR-Typ
+  durch .include "xxxdef.inc" auch vorher definiert wurde.
+  Den Symbolnamen des AVR-Typs erhaelt man, wenn der
+  Quellcode mit der Option -s assembliert wird, im Listing
+  unter "Liste der Symbole" unter dem Symboltyp "T". 
+
+b) Verfuegbarer Quellcode:
+* FPC-Pascal, getestet fuer Linux(i386-x64) und Win64.
+  Zum Kompilieren die neuesten Versionen des Compilers verwenden,
+  aeltere Versionen haben Probleme mit einigen Pascal-Instruktionen
+  (FPC-Compiler sind ueber http://www.freepascal.org erhaeltlich).
+  Die zahlreichen Warnungen beim Kompilieren koennen ignoriert
+  werden.
+* Dateien:
+  gavrasm.pas:  Hauptdatei
+  gavrdev.pas:  Unit mit allen Hardware-Eigenschaften und
+                vordefinierten Symbolen der unterstuetzten
+                AVR-Typen (ersetzt alle bekannten *def.inc
+                Dateien)
+  gavrif.pas:   Unit zur Implementierung geschachtelter
+                IF/IFDEF/IFNDEF/ELSE/ELIF/ENDIF-Konstruktionen
+  gavrinst.pas: Verarbeitet den Instruktionsumfang und prueft
+                auf zulaessige Instruktionen, wenn der Typ
+                bekannt ist
+  gavrlang.pas: Unit zur Sprachauswahl (deutsch, englisch,
+                franzoesisch und Tuerkisch verfuegbar:
+                gavrlang_de.pas, gavrlang_en.pas,
+                gavrlang_fr.pas, gavrasm_tr.pas), deutsche
+                Version durch Kopieren von gavrlang_de.pas,
+                Einfuegen als gavrlang.pas und mit FPC
+                compilieren.
+  gavrline.pas: Unit zum Splitten der asm-Zeilen in ihre
+                Bestandteile
+  gavrmacr.pas: Unit fuer die Makro-Verwaltung
+  gavrout.pas:  Unit fuer die Hexausgabe (Flash, EEPROM) und
+                das Listing
+  gavrsymb.pas: Unit fuer die Symbole-Verwaltung
+  gavrrsymb.pas: Expandieren der Standard-Symbole in gavrdev.pas
+  gavrosym.pas: Expandieren anderer Symbole in gavrdev.pas
+  gavrrxsym.pas: Expandieren des xmega-Symbolsets in gavrdev.pas
+
+* Vor dem Kompilieren die gewuenschte Sprachdatei (gavrlang_de.pas)
+  kopieren und als gavrlang.pas umbenennen!
+  
+* Testdatei zur Ueberpruefung des Assemblers:
+  instr.asm:    Testdatei mit allen AVR-Instruktionen
+    (Sollte fehlerfrei assemblieren, ergibt eine Warnung wegen
+    fehlender def.inc-Direktive.)
+
+c) Direktiven:
+* Die .DEVICE-Direktive bindet automatisch alle Symbole des
+  betreffenden AVR-Typs ein, das Include von *def.inc-Dateien
+  ist damit jetzt ueberfluessig. Um mit anderen Assemblern
+  kompatibel zu sein, kann die def.inc mit .INCLUDE "xxxdef.inc"
+  eingebunden werden, was dasselbe bewirkt wie die .DEVICE-
+  Direktive. Die .DEVICE-Direktive bindet nunmehr auch die
+  16-Bit-Zeigerregister X (XH:XL), Y (YH:YL) und Z (ZH:ZL)
+  ein, sofern diese beim betreffenden AVR-Typ definiert
+  sind.
+* Die .EXIT-Direktive ohne Bedingung bricht die weitere
+  Verarbeitung der Quelldatei ab und ist kompatibel mit
+  anderen AVR-Assemblern. Zusaetzlich kann aber auch eine
+  Bedingung als Parameter angegeben werden. Ist die Bedin-
+  gung erfuellt (TRUE, 1), dann bricht gavrasm den gesamten
+  Assembliervorgang hier ab. Dies funktioniert auch in
+  INCLUDE-Dateien.
+  Dieses Feature kann verwendet werden, um z.B. Bereichs-
+  pruefungen waehrend der Assemblierung durchzufuehren und
+  bei Ueber- oder Unterschreitung bestimmter Grenzen mit einer
+  entsprechenden Fehlermeldung abzubrechen und vermeidet die
+  massenhafte Ausgabe von Folgefehlern.
+  Diese Direktive kann teilweise durch die .ERROR-Direktive er-
+  setzt werden. Die .ERROR-Direktive bricht aber die weitere
+  Assemblierung nicht ab, sondern assembliert weiter.
+* Zusaetzliche .IF, .IFDEF, .IFNDEF, .ELSE, ELIF und .ENDIF
+  Direktiven: Code nach .IF (Bedingung), .IFDEF (Symbol) und
+  .IFNDEF (Symbol) wird nur assembliert, wenn die Bedingung
+  wahr (1) bzw. das Symbol definiert bzw. nicht definiert ist,
+  sonst wird zum Code nach der .ELSE-, .ELIF oder .ENDIF-
+  Direktive verzweigt. Mit .ELIF kann im Unterschied zu
+  .ELSE eine zusaetzliche Bedingung abgefragt werden. Bitte
+  die ELIF-Direktive nur alternativ zu .ELSE verwenden, eine ge-
+  mischte Verwendung ist nicht definiert!
+  Die Definition des Symbols bei .IFDEF bzw. .IFNDEF MUSS
+  vor der ersten Abfrage erfolgen, andernfalls resultieren
+  Uebersetzungsfehler!
+  Beliebig tief verschachtelte .IF, .IFDEF, .IFNDEF,
+  .ELSE/ELIF und .ENDIF Direktiven sind zulaessig.
+* .IFDEVICE ermoeglicht Verzweigungen abhaengig vom AVR-Typ,
+  andernfalls wird nach .ELSE, .ELIF oder .ENDIF weiter
+  assembliert.
+* .UNDEF setzt das betreffende Symbol als undefiniert.
+* .MESSAGE gibt eine erzwungene Meldung (in "..." als Parameter)
+  aus und kann zur Benachrichtigung waehrend des Uebersetzens
+  verwendet werden.
+* .ERROR erzwingt einen Fehler mit einem definierbaren Fehler-
+  text (in "..." als Parameter).
+* Rekursive .INCLUDE-Direktive mit beliebig tiefer Schachtelung,
+  In der Linux-Version den Dateinamen auf jeden Fall in Gaense-
+  fuesze einschlieszen!
+* Die Liste der unterstuetzten Direktiven wird durch Aufruf mit
+  gavrasm -d ausgegeben.
+
+d) Mathematische Funktionen:
+* Um die erweiterten Moeglichkeiten von 64-Bit-Integer-Zahlen
+  nutzen zu koennen, wurde die mathematischen Funktionen BYTE1
+  bis BYTE4 um die Funktionen BYTE5 bis BYTE8 erweitert.
+
+e) Makros:
+* Anders als bei anderen Assemblern muessen Makros schon vor
+  ihrer ersten Verwendung definiert sein!
+* Erweiterte Makro-Aufrufe:
+  - verschachtelte Aufrufe ohne Begrenzung zulaessig
+  - erweiterte Parameterueberpruefung bereits innerhalb der
+    Definition, nicht erst beim Aufruf
+  - alle Labels in Makros sind lokal definiert und von auszerhalb
+    des Makros zwecks verbesserter Fehlererkennung unzugaenglich
+  - Labels in Makros sind auch vorwaerts und bei verschachtelten
+    Makrodefinitionen gueltig
+  - Optionale Verwendung von .ENDM oder .ENDMACRO zum Abschluss
+    des Makros
+  - Liste aller definierten und verwendeten Makros im Listing,
+    wenn die Ausgabe der Symbolliste eingeschaltet ist (Aufruf
+    mit Option -s und ohne Option -l bzw. mit .LIST im Quellcode
+
+f) Fehlererkennung und Syntaxpruefung:
+* Erweiterte Symbolpruefung auf Zulaessigkeit:
+  - exakte Unterscheidung nach Symboltypen (Typen: R fuer Register,
+    C fuer Konstanten, V fuer Variablen, T fuer AVR-Typ-
+    Definitionen, M fuer lokale Makro-Sprungmarken, L fuer
+    Sprungmarken, G fuer globalisierte Lokalvariablen in Makros)
+  - erweitert kompatibel mit den meisten gaengigen ATMEL-def.inc-
+    Dateien (akzeptiert OR und BRTS als Symbolname, weil diese in
+    aelteren *def.inc-Dateien von ATMEL(R) verwendet wurden)
+  - erweiterte Erkennung undefinierter Symbole, keine Default-
+    Setzung auf Null
+* Erweiterte Fehlerkommentierung und Warnungen ( mehr als 100
+  Fehlertypen, 8 Warnungstypen)
+* Ausfuehrliche Syntaxdarstellung im Anfaengermodus (Option -eb)
+  zu fehlerhaften Instruktionen und Direktiven in der Listdatei
+* Erweiterte Rechenpruefung (Ueber-, Unterlauf von Rechenschritten
+  bei internen 64-Bit-Integerwerten)
+* Erweiterte zulaessige Zeichen in Literalkonstanten: ';', '''',
+  '\n', '\\', "abc\n\j", "abc;def"
+* Zulaessiges Trennzeichen (Punkt, '.') in Binaer- und Hexadezimal-
+  zahlen fuer verbesserte Lesbarkeit des Quellcodes (z.B.
+  0b0001.0010, $124A.035F, 0x82.FABC). Der Underscore '_' kann
+  ebenfalls verwendet werden (Kompatibilitaet mit anderen
+  Assemblern).
+* BYTE1-Funktion (analog zu BYTE2 etc.)
+* Ermoeglicht bei relativen Spruengen die Angabe des
+  Displacements, z.B. rjmp +10 oder brcc -3 (Displacement MUSS
+  in diesem Fall mit einem Vorzeichen beginnen)
+
+g) Unterstuetzte AVR-Typen:
+* Liste der unterstuetzten AVR-Typen durch Aufruf mit gavrasm -t
+* AT90S:    1200, 2313, 2323, 2333, 2343, 4414, 4433, 4434, 8515, 8535
+* AT90C85:  34
+* AT86RF:   401
+* ATtiny:   4, 5, 9, 10, 11, 12, 13, 13A, 15, 20, 22, 24, 24A, 25, 26, 28,
+            40, 43U, 44, 44A, 45, 48, 80, 84, 84A, 85, 87, 88, 102, 104,
+            167, 202, 204, 212, 214, 261, 261A, 402, 404, 406, 412, 414,
+            416, 416auto, 417, 441, 461, 461A, 804, 806, 807, 814, 816,
+            817, 828, 840, 841, 861, 861A, 1604, 1606, 1607, 1614, 1616,
+            1617, 1634, 2313, 2313A, 3214, 3216, 3217, 4313
+* ATmega:   8, 8A, 8HVA, 8U2, 16, 16A, 16HVA, 16HVA2, 16HVB, 16HVBrevB,
+            16M1, 16U2, 16U4, 32, 32A, 32C1, 32HVB, 32HVBrevB, 32M1, 32U2,
+            32U4, 32U6, 48, 48A, 48P, 48PA, 48PB, 64, 64A, 64C1, 64HVE,
+            64HVE2, 64M1, 64RFR2, 83, 88, 88A, 88P, 88PA, 88PB, 103, 104,
+            128, 128A, 128RFA1, 128RFR2, 161, 161C, 162, 163, 164A, 164P,
+            164PA, 165, 165A, 165P, 165PA, 168, 168A, 168P, 168PA, 168PB,
+            169, 169A, 169P, 169PA, 256RFR2, 323, 324A, 324P, 324PA, 324PB,
+            325, 325A, 325P, 325PA, 328, 328P, 328PB, 329, 329A, 329P, 329PA,
+            406, 640, 644, 644A, 644P, 644PA, 644RFR2, 645, 645A, 645P,
+            649, 649A, 649P, 808, 809, 1280, 1281, 1284, 1284P, 1284RFR2,
+            1608, 1609, 2560, 2561, 2564RFR2, 3208, 3209, 3250, 3250A, 3250P,
+            3250PA, 3290, 3290A, 3290P, 3290PA, 4808, 4809, 6450, 6450A,
+            6450P, 6490, 6490A, 6490P, 8515, 8535
+* ATxmega:  8E5, 16A4, 16A4U, 16C4, 16D4, 16E5, 32A4, 32A4U, 32C3, 32C4,
+            32D3, 32D4, 32E5, 64A1, 64A1U, 64A3, 64A3U, 64A4U, 64B1, 64B3,
+            64C3, 64D3, 64D4, 128A1, 128A1U, 128A3, 128A3U, 128A4U, 128B1,
+            128B3, 128C3, 128D3, 128D4, 192A3, 192A3U, 192C3, 192D3, 256A3,
+            256A3B, 256A3BU, 256A3U, 256C3, 256D3, 384C3, 384D3
+* AT90CAN:  32, 64, 128
+* AT90PWM:  1, 2, 2B, 3, 3B, 81, 161, 216, 316
+* AT90USB:  82, 162, 646, 647, 1286, 1287
+* ATA:      5272, 5505, 5700M322, 5702M322, 5781, 5782, 5783, 5787, 5790,
+            5790N, 5791, 5795, 5831, 5832, 5833, 5835, 6285, 6286, 6289,
+            6612C, 6613C, 6614Q, 6616C, 6617C, 8210, 8215, 8510, 8515, 664251
+
+h) Sprachversionen:
+* Deutsche, englische, franzoesische und tuerkische
+  Sprachversion verfuegbar (Quellcode und ausfuehr-
+  bare Linux- bzw. Windows-Versionen)
+
+h) Offene Punkte und bekannte Fehler:
+* Aus undurchsichtigen Gruenden verwendet ATMEL in seinen
+  def.inc-Dateien mittlerweile auch C-Definitionen. Diese
+  habe ich beim Einlesen und Auswerten dieser Dateien und
+  bei der Generierung der Symboltabellen teilweise igno-
+  riert. Eine exakte Implementierung werde ich nur vorneh-
+  men, wenn ich eine Fehlermeldung von einem User erhalte.
+* Die Verarbeitung von Zahlen arbeitet konsequent mit
+  64-Bit-Integer-Zahlen. Ich habe nicht vor, Fliesskomma-
+  Zahlen zu implementieren, weil diese in Assembler voellig
+  ueberfluessig sind. Wer beim Multiplizieren oder Teilen
+  Wert auf korrektes Runden des Ergebnisses legt, muss dies
+  mit den Methoden der Ganzzahlenmathematik selbst formu-
+  lieren.
+
+Versionen und Aenderungen
+-------------------------
+Neueste Versionen unter
+http://www.avr-asm-tutorial.net/gavrasm/index_de.html
+
+Hinweis: Der AVR-Assembler-Simulator avr_sim enthaelt
+  gavrasm in der jeweils neuesten Version. Er ist als
+  Lazarus-Quellcode und als fertig kompilierte aus-
+  fuehrbare Datei fuer Linux und Windows (64-Bit) er-
+  haeltlich und kann hier heruntergeladen werden:
+  http://www.avr-asm-tutorial.net/avr_sim/index_de.html.
+
+Juli 2020: Version 4.8
+- Korrigiert: Ein schwerwiegender Fehler in Version 4.7
+  beim Definieren und bei der Benutzung von Registern
+  wurde korrigiert.
+Juni 2020: Version 4.7
+- Korrigiert: Ein fehlender Ausdruck links von einer
+  Rechenfunktion (z.B. in "(<<PORTB0)" wurde durch eine
+  Null ersetzt, was zu fehlerhaftem Code fuehrte.
+- Korrigiert: Nach dem Loeschen der Makros vom Stack wurde
+  der Makrozeiger nicht auf NIL gesetzt. Das hat keinerlei
+  Auswirkungen auf die Funktion von gavrasm und wurde aus
+  Kompatibilitaetsgruenden mit avr_sim Version 20+ korri-
+  giert.
+- Korrigiert: Ein Range check error bei Devices deren
+  Anzahl Flashspeicher undefiniert ist.
+- Korrigiert: Ein Fehler bei der Verwendung von "." als
+  Trenner in Konstanten ist beseitigt. 
+- Korrigiert: Die Verwendung eines nicht vorhandenen
+  Port-Namens fuehrte zu einer missverstaendlichen
+  und unzutreffenden Fehlermeldung.
+  
+Februar 2020: Version 4.6
+- Korrigiert: Ein Absturz beim Linksschieben von 1<<N,
+  wenn N nicht definiert ist, wurde beseitigt.
+- Korrigiert: Die Links-Schiebefunktion 1<<N und die
+  Rechtsschiebefunktion 1>>N arbeitete bei N>8 nicht
+  korrekt.
+- Hinzugefuegt: Support fuer ATmega808/809/1608/1609.
+
+November 2019: Version 4.5
+- Korrigiert: Ein Fehler bei der Verwendung von Register-
+  symbolen bei den AVR8L-Typen (ATtiny4/6/8/10) wurde
+  beseitigt.
+
+Oktober 2019: Version 4.4
+- Hinzugefuegt: Z-Option auf der Kommandozeile (Datum als
+  Byte-Zahlenwerte in den Konstanten NOW_D, NOW_M und NOW_Y
+  sowie das Datum als Integer-Zahlenwert NOW_I als Tage seit
+  dem 1.1.1900).
+- Korrigiert: Die SPM-Instruktion ist bei den ATtiny441/841
+  nunmehr gueltig.
+- Korrigiert: Die Adressen von OCR1BH/L und ICR1H/L beim
+  ATtiny1634 waren fehlerhaft (bereits in der Studio-def.inc).
+  Das ist korrigiert.
+- Korrigiert: Ein Problem mit negativen Zahlen bei den arith-
+  methischen Funktionen (insb. HIGH) wurde behoben.
+- Geaendert: Die Direktive .DEVICE (Typ) bindet nunmehr auch
+  die Zeigerregister X (XH:XL), Y (YH:YL) und Z (ZH:ZL) in den-
+  jenigen AVR ein, in denen diese definiert sind. Die Di-
+  rektive ist nunmehr gleichwertig zu .INCLUDE "xxxdef.inc",
+  benoetigt aber keine .LIST und .NOLIST Direktiven und gibt
+  auch keine Warnung aus.  
+
+Juli 2019: Version 4.3
+- Korrigiert: Bei fehlendem Eintrag in eine Parameterliste
+  (z.B. mit ,,) erfolgte ein Absturz. Dies ist korrigiert.
+- Geaendert: Alle internen Berechnungen werden jetzt in
+  64-Bit-Integer ausgefuehrt. Dies bedingt, dass erheblich
+  groeszere Zahlenwerte moeglich und zulaessig sind. Ent-
+  sprechend wurden die Funktionen um BYTE5 bis BYTE8 er-
+  gaenzt, die entsprechenden Zugriff auf die hoeheren Bytes
+  ermoeglichen.
+- Geaendert: Bei der Verarbeitung von .IF-Direktiven gab es
+  unter ganz bestimmten Umstaenden fehlerhafte Ergebnisse,
+  deren Ursache sich nicht identifizieren finden liesz. Die
+  gesamte Verarbeitung der .IF-Direktiven wurde daher neu
+  bearbeitet und geaendert.
+- Geaendert: Die Ueberpruefung von negativen Zahlen, in
+  frueheren Versionen auf den Bereich -1 bis -128 begrenzt,
+  erlaubt nun wieder negative Zahlen bis -255.
+- Hinzugefuegt: Unterstuetzung fuer zahlreiche neuere
+  ATtiny-Typen, siehe obige Liste
+
+Maerz 2019: Version 4.2
+- Korrigiert: Bei den relativen Spruengen BRxC/BRxS und
+  RJMP/RCALL traten Fehler auf, wenn das Sprungziel exakt
+  die Ober- und Untergrenze des zulaessigen Bereichs erreich-
+  te. Das ist nunmehr korrigiert.
+- Korrigiert: Beim Assemblieren der Testdatei instr.asm mit
+  allen Instruktionen der AVRs trat bei den ST/LD-Instruktio-
+  nen Fehlermeldungen auf, da gavrasm bei fehlender def-Include
+  faelschlich fuer den Typ AT90S1200 assemblierte. Das ist
+  korrigiert.
+- Korrigiert: Die Verwendung von Sprungzielen und Labels in
+  Makros fuehrte zu einem schwerwiegenden Fehler, da das
+  Sprungziel fehlerhaft berechnet wurde. Dies ist korrigiert.
+- Geaendert: Die gesamte Verarbeitung von Labels in Makros
+  wurde ueberarbeitet. Makro-Labels werden nun im Format
+  Label@Makroname@Aufrufnummer als normale Labels gespeichert
+  und verarbeitet und sind mit ihren Programmzaehler-Adressen
+  so auch in der Symbolliste angegeben. Die Direktive
+  .SETGLOBAL wurde entfernt, da alle Labels unter diesen
+  Namen global zugaenglich sind und die Direktive nun keinen
+  Sinn mehr macht.
+- Korrigiert: Die Assembler-Option -w (Wrap around) war fehler-
+  haft umgesetzt und hat nicht funktioniert. Das wurde
+  korrigiert.
+- Hinzugefuegt: Die Syntax R[n+1]:R[n] zur Angabe der Register-
+  paare war bei der MOVW-Instruktion nicht implementiert und
+  fuehrte zu einer Fehlermeldung. Diese Syntax wurde hinzuge-
+  fuegt. Ausserdem wurden bei MOVW, ADIW und SBIW auch die
+  Registerpaarangaben X, Y und Z hinzugefuegt.
+- Korrigiert: Bedingt durch einen ernsten Fehler im Datenblatt
+  des ATmega328PB waren eine Reihe von Instruktionen, wie z.B.
+  ADIW/SBIW, MUL/FMUL, LPM und SPM als unzulaessig eingeordnet.
+  Dieser Fehler ist korrgiert.
+- Korrigiert: Bedingt durch eine fehlerhafte Pruefung liesz
+  sich die letzte Speicherzelle im Flash nicht nutzen. Das ist
+  korrigiert. 
+- Korrigiert: Die Verwendung eines undefinierten Parameters b
+  in (a<<b) fuehrte zu einem fatalen Fehler. Das ist korrigiert.
+
+Dezember 2018: Version 4.1
+- Korrigiert: Konstanten mit den Namen C, Z, N, H, I, T, V
+  und S wurden nicht in der Symbolliste angezeigt. Dies ist
+  korrigiert.
+- Korrigiert: Beim Aufruf der Funktionen HIGH, LOW, BYTE1
+  bis BYTE4, LWORD und HWORD wurden negative Zahlen nicht
+  korrekt umgesetzt.
+- Korrigiert: Bei der Pruefung negativer Zahlen wurden
+  diese nicht korrekt auf den Wertebereich bis -128 getestet
+  und faelschlicherweise solche nicht mit einer Fehlermeldung
+  quittiert.
+- Korrigiert: Bei geschachtelten .IF trat bei .ENDIF der
+  inneren Bedingung, wenn sie innerhalb des .ELSE-Zweigs
+  erfolgte, ein Fehler auf, da der urspruengliche Status
+  der aeuszeren Bedingung faelschlich invertiert wurde. 
+
+September 2018: Version 4.0
+- Korrigiert: Ein Problem mit fuehrenden Nullen in Konstanten-
+  Ausdruecken (0123) wurde beseitigt.
+- Korrigiert: Eine fehlende schliessende Klammer in einer
+  Funktion lieferte eine irrefuehrende Fehlermeldung.
+- Korrigiert: Die Verwendung von Vorwaerts-Bezuegen zu Labeln
+  fuehrte im Pass 1 zu einer falschen Fehlermeldung.
+
+July 2018: Version 3.9
+- Ergaenzt: Operator % (Modulo, Divisionsrest).
+- Korrigiert: Instruktionen wie CPI, LDI etc. erlaubten es,
+  als zweiten Parameter nicht nur eine Konstante, sondern auch
+  ein Register anzugeben. Dies wurde korrigiert.
+- Korrigiert: Beim Berechnen von Ausdruecken wie a-b*c kamen
+  fehlerhafte Resultate heraus (inkorrekte Bearbeitung der
+  Rechenprioritaet).
+- Geaendert: Fuer einige Tiny-, Mega- und XMega-Typen liegen
+  Datenblaetter vor, die Typpruefung fuer diese Typen wurde
+  eingeschaltet.
+
+April 2018: Version 3.8
+- Korrigiert: Range Check Error Absturz bei unabgeschlossener
+  Makrodefinition in Pass 1 mit Fehlermeldung abgefangen
+- Korrigiert: Range Check Error in gavrout wenn Quersumme bei
+  Hexzeilen Null ist
+- Korrigiert: LD/ST- und ADIW/SBIW-Instruktionen beim
+  ATtiny441/841
+- Erweitert: Range Check Error Absturz bei mehr als 50 Para-
+  metern in einer Zeile (Tabelle), zulaessigen Bereich auf
+  100 Parameter erweitert
+- Hinzugefuegt: Unterstuetzung fuer ATmega3208/09/4808/09
+  (noch kein komplettes Datasheet vorhanden) 
+
+Oktober 2017: Version 3.7
+- Korrigiert: Im EEPROM-Segment mit .ORG-Werten groesser Null erzeugte
+  Hexdateien wiesen falsche Adressen auf, Fehler ist korrigiert
+- Korrigiert: Fataler Fehler bei Verwendung mehrerer .cseg-Direktiven
+- Korrigiert: Ein Fehler in der Symbolverwaltung korrigiert
+- Korrigiert: Schliessende Klammer ohne oeffnende Klammer in Parameter
+  fuehrte zu Range Check Error 
+- Korrigiert: Fehler bei relativen Adressen PC+/-, Schalter J entfernt 
+- Geaendert: In den LiesMich-Dateien war der Parameter -m falsch beschrie-
+  ben, der Default-Wert ist Expansion von Makros aus, Beschreibung
+  korrigiert
+- Geaendert: Relativspruenge koennen mit PC+/- oder ohne PC nur mit
+  +/- angegeben werden (Unterschied zu anderen Assemblern)
+- Geaendert: Im Listing erscheinen die String-Parameter %YEAR% etc. jetzt
+  aufgeloest
+- Hinzugefuegt: Unterstuetzung fuer etliche neuere AVR-Typen
+
+Januar 2017: Version 3.6
+- Hinzugefuegt: Unterstuetzung fuer ATtiny80 und 840 (noch kein Datenblatt
+  verfuegbar), ATtiny102, 104, 417, 814, 816 und 817, def.inc aus
+  Studio Version 7.0-1188
+- Korrigiert: Fehler bei Device Memory Sizes bei alten AVR-Typen beseitigt
+
+Dezember 2015: Version 3.5
+- Hinzugefuegt: Unterstuetzung fuer neue Typen (Studio Version 7.0.634)
+  ATA: 5702M322, 5781, 5782, 5783, 5791, 8210, 8215, 8510, 8515
+  ATxmega: 32C3, 32D3
+  ATmega: 168PB, 16hvbrevb, 324PB, 328PB, 48PB, 88PB
+  ATtiny: 441, 841
+- Hinzugefuegt: Verwendung von Datums-, Zeit- und Quelldatei-
+  Schluesselwoertern in .DB Texten, erkannt und ersetzt werden:
+    %YEAR%, %MONTH%, %DAY%, %HOUR%, %MINUTE%, %SOURCE%
+  Die Schluesselworte werden nur in Grossschreibung erkannt!
+- Hinzugefuegt: Option -p zum Abschalten der EEPROM-Adressen-Pruefung
+
+Dezember 2014: Version 3.4
+- Hinzugefuegt: Programmbeendigung mit Fehlerrueckmeldung, 0=fehlerfrei,
+  1=ein oder mehrere Fehler, 2=fataler Fehler
+- Hinzugefuegt: Syntaxpruefung fuer ATtiny828
+- Hinzugefuegt: 28 neue Typen
+- Korrigiert: Unbehandelter Absturz bei unbekanntem Device
+
+Juni 2012: Version 3.3
+- Hinzugefuegt: Dokumentation bei einigen Typen hinzugefuegt
+- Geaendert: Type-Ausgabe jetzt mit Instructionset-Flags
+- Geaendert: Hoehere Komprimierung der Standard-Symbole, dadurch Reduzierung
+  der exe-Groesse um 32% und der gavrdev-Unit um 82%
+
+Mai 2012: Version 3.2
+- Hinzugefuegt: Tuerkische Sprachversion
+- Hinzugefuegt: ATxmega128A1U, 128A4U, 128C3, 128D4, 16C4, 192C3, 256C3,
+  32C4, 384D3, 64A1U, 64A4U, 64C3, 64D4, AT90PWM161, ATtiny828, AT90S2333,
+  ATmega161C (im Compatibility mode)
+- Korrigiert: ELPM-Instruktion bei ATmega1284xx generell erlaubt, obwohl
+  diese in den aktuellen Datenblaettern nicht verzeichnet ist, aber in
+  den Chips offenbar implementiert ist und korrekt funktioniert
+- Hinzugefuegt: Die ADIW- und SBIW-Instruktionen akzeptieren nun auch
+  die Syntax R31:R30,C
+
+Dezember 2011: Version 3.1
+- Hinzugefuegt: 5 neue ATxmega-Typen
+- Korrigiert: Fehler in der Instruktionsset-Pruefung
+- Hinzugefuegt: Ignoriert Zeilen im C-Stil in Include-Dateien
+
+Juli 2011: Version 3.0
+- Korrigiert: Zeilen, die nur Leerzeichen und Tabulatoren enthalten,
+  aber nicht mit Semikolon als Kommentarzeilen gekennzeichnet sind,
+  werden nun korrekt als leer erkannt und ignoriert
+- Hinzugefuegt: 10 neue AVR-Typen
+- Hinzugefuegt: Instruktionen DES, XCH, LAS, LAC, und LAT 
+
+Januar 2011: Version 2.9
+- Korrigiert: Fehler bei der Auswertung von Konstanten
+- Korrigiert: Fehler bei der Adressierung von SRAM bei AVR8L-Typen
+
+Januar 2011: Version 2.8
+- Hinzugefuegt: Support fuer sechs neue AVR-Typen (Stand: Studio 4 SP3)
+- Geaendert: Neue Dokumentation fuer zehn Typen (Stand: 10/2010)
+- Korrigiert: Fehler bei der Registerpruefung und LDS/STS bei den AVR8L-
+              Typen ATtiny4, 5, 9, 10, 20 und 40
+
+November 2010: Version 2.7
+- Korrigiert: Fehler bei der Symbolliste
+
+Mai 2010: Version 2.6
+- Korrigiert: Typumwandlungen der Pascal-Sourcen
+- Korrigiert: Doppelregister-Definitionen bei externen def.inc
+- Korrigiert: Fehler bei Literalkonstanten in .db und mit \
+- Korrigiert: Erkennung von fehlerhaften Zeilen verbessert
+- Hinzugefuegt: 6 neue AVR-Typen
+
+Februar 2010: Version 2.5
+- Korrigiert: Fehler bei der Gueltigkeitspruefung von Instruktionen
+  auf Typ-Zulaessigkeit
+
+Januar 2010: Version 2.4
+- Korrigiert: Fehler bei der Symbol-Ueberpruefung
+- Hinzugefuegt: 24 neue AVR-Typen
+- Hinzugefuegt: .UNDEF-Direktive
+- Geaendert: Kodierung des Instruction Sets
+
+Mai 2009: Version 2.3
+- Korrigiert: Ernster Fehler bei der Adressierung des Registers
+  R30 (ZL) behoben!
+- Korrigiert: Fehler bei der Option -x (nur externe def.inc-Datei
+  auswerten) behoben!
+
+Dezember 2008: Version 2.2
+- Hinzugefuegt: Unterstuetzung fuer franzoesische Sprachversion
+  (danke an Herve)
+- Hinzugefuegt: 50 neue AVR-Typen
+- Geaendert: Die gesamte interne Speicherung und Verarbeitung der
+  Hardware-Eigenschaften der AVR, der def.inc-Dateien und der
+  prozessorspezifischen internen Symbole wurde ueberarbeitet und
+  geaendert.
+- Entfernt: AVR-Typen AT90C8534, AT90S2343, ATmega104, ATmega603,
+  (die entfernten Typen werden von ATMEL nicht mehr supported -
+  obsolet)
+- Hinzugefuegt: SPM Z+ Unterstuetzung
+
+November 2006: Version 2.1
+- Korrigiert: Fehler beim Opcode von CALL und JUMP
+- Korrigiert: Erkennung von ungueltigen Zeichen in Instruktionen
+
+September 2006: Version 2.0
+- Korrigiert: Fehler bei der Behandlung von Variablen mit SET
+
+August 2006: Version 1.9
+- Korrigiert: Fehler bei der Erkennung benutzter Symbole
+- Korrigiert: STD ohne Displacement ergab falschen Opcode
+
+July 2006: Version 1.8
+- Korrigiert: Fehler bei Memory-Adressen bei einigen ATmega 
+
+Mai 2006: Version 1.7
+- Korrigiert: Pruefung der ADIW/SBIW-Instruktionen.
+- Korrigiert: ELIF-Direktive ueberarbeitet.
+
+Dezember 2005: Version 1.6
+- Hinzugefuegt: Unterstuetzung fuer die AVR-Typen AT90CAN32,
+  AT90CAN64, ATtiny24, 44, 84, ATmega644.
+
+September 2005: Version 1.5
+- Korrigiert: Doppelte Ausgabe von Direktiven beseitigt.
+- Korrigiert: Problem mit geschachtelten IF/IFDEF/IFNDEF/IFDEVICE
+  Direktiven beseitigt.
+
+Juli 2005: Version 1.4
+- Hinzugefuegt: Unterstuetzung fir die AVR-Typen AT90CAN128,
+  ATmega329, 3290, 406, 649, 6490, AT90PWM2, 3
+- Geaendert: Anders als in frueheren Versionen sind Direktiven
+  in allen Spalten der Zeile erlaubt, Instruktionen duerfen in
+  Spalte 1 der Zeile beginnen.
+- Geaendert: In D- und E-Segmenten sind alle Direktiven
+  zulaessig.
+- Korrigiert: Ein Fehler bei der Verarbeitung der Konstante
+  ',' wurde behoben.
+- Korrigiert: DEVICE Direktive erkannte einige Typen mit
+  laengeren Namen nicht korrekt.
+- Korrigiert: Port ADCSRA bei ATmega8 wurde nur unter altem
+  Namen erkannt.
+
+April 2005: Version 1.3
+- Korrigiert: falsche EEPROM-Groesse bei ATmega104 und 128
+- Hinzugefuegt: Unterstuetzung fuer die Typen ATmega 1280, 1281,
+  2560, 2561 und 640
+
+Maerz 2005: Version 1.2
+- Korrigiert: Fehler beim Registerbit WGM02 im Port TCCR0B des
+  ATtiny13 war falsch
+- Korrigiert: Fehlende Parameter bei einer Reihe von Instruktionen
+  wurden faelschlicherweise ohne Kommentar akzeptiert.
+- Hinzugefuegt: Unterstuetzung fuer die Typen ATtiny25, 45
+  und 85
+
+Januar 2005: Version 1.1
+- Korrigiert: Fehler bei der Anzahl Warnungen
+- Korrigiert: Fehler bei der Verwendung von SETGLOBAL
+- Korrigiert: Fehler bei der Verwendung von underscore bei
+  Macronamen
+- Hinzugefuegt: Unterstuetzung fuer die optionale Angabe von
+  PC bei relativen Sprungdistanzen.
+
+Oktober 2004: Version 1.0
+- Hinzugefuegt: Unterstuetzung fuer neue Typen ATmega325/3250/
+  645/6450
+- Geaendert: Gesamte Auswertung von Direktiven ueberarbeitet
+- Hinzugefuegt: Neue Direktiven .ERROR, .MESSAGE, .ELIF, .IFDEF,
+  IFNDEF fuer verbesserte Kompatibilitaet mit neueren ATMEL(R)-
+  Assemblern
+- Hinzugefuegt: Ausgabe aller Fehlermeldungen in eine separate
+  Fehlerdatei source.err.
+
+Maerz 2004: Version 0.9
+- Hinzugefuegt: Unterstuetzung fuer neue Typen ATmega48/88/168
+
+Februar 2004: Version 0.8
+- Korrigiert: Fehler beim Setzen des RAMEND-Symbols beseitigt
+- Korrigiert: Falsche SRam-Angaben bei drei aelteren ATmega-Typen
+- Korrigiert: Assembler startete nicht mit kurzen Fehlermeldungen
+  als Voreinstellung, wenn keine Parameter angegeben wurden
+
+Oktober 2003: Version 0.7
+- Hinzugefuegt: Unterstuetzung fuer neuen Typ ATtiny2313
+- Hinzugefuegt: Direktive .IFDEVICE fuer Verzweigungen abhaengig
+  vom AVR-Typ
+- Geaendert: Einstufung von ATtiny22 als zuverlaessig, da
+  jetzt Datenblatt verfuegbar
+
+September 2003: Version 0.6
+- Korrigiert: Fehler bei der Verarbeitung negativer Zahlen in
+  Funktionen behoben
+- Korrigiert: Fehler bei der Verarbeitung von .DEVICE behoben
+- Geaendert: Der Aufruf von def.inc-Dateien mit .INCLUDE bewirkt
+  jetzt, dass die entsprechenden internen Symbol-Definitionen
+  geladen werden und eine Warnung ausgegeben wird, die
+  def.inc-Datei wird nicht verarbeitet
+- Geaendert: Gesamten Instruktionsset ueberarbeitet
+- Hinzugefuegt: Support fuer einige aeltere Typen, Warnung bei
+  undokumentierten Typen
+- Hinzugefuegt: Verschachtelte IF-Konstruktionen
+
+August 2003: Version 0.5
+- Korrigiert: LD/ST-Instruktion fuer AT90S1200 zulaessig, ergab
+  Fehlermeldung!
+
+Juli 2003: Version 0.4
+- Korrigiert: Missverstaendliche Fehlermeldung bei der Verwendung
+  undefinierter Registersymbole
+- Hinzugefuegt: DEVICE-Direktive bindet alle Symbole des betref-
+  fenden AVR-Typs ein und ersetzt die *def.inc-Dateien. Ausgabe
+  einer Fehlermeldung beim INCLUDE von *def.inc-Dateien!
+- Unterstuetzung fuer den neuen Typ ATtiny13.
+
+Juni 2003: Version 0.3
+- Korrigiert: Erkennung doppelter Marken korrigiert (ergab
+  faelschlich internen Compiler-Fehler)
+- Korrigiert: Konstantenausdruecke, die mit einer Klammer beginnen
+  und enden, wurden nicht richtig erkannt. Daher Unterstuetzung
+  fuer Makro-Aufrufe mit geklammerten Parametern entfernt!
+
+Mai 2003: Version 0.2
+- Hinzugefuegt: Export lokaler Makrosymbole nach global
+  implementiert
+- Wrap-Around bei relativen Verzweigungen/Spruengen implementiert,
+  funktioniert bei allen Verzweigungsinstruktionen (RJMP, RCALL)
+  und bei allen bedingten Branch-Instruktionen (Unterschied zu
+  aelteren ATMEL-Assemblern!)
+- Korrigiert: Mit Studio/Wavrasm kompatible Adressierung in der
+  Hex-Datei (byte-orientiert, nicht wort-orientiert), funktioniert
+  auch bei mehreren .ORG-Direktiven korrekt
+- Korrigiert: Instruktionen LSL und LSR fuer Typ AT90S1200 gueltig,
+  ergab Fehlermeldung in Version 0.1
+- Korrigiert: Marken/Variable/Konstanten mit Unterstrich als erstem
+  Zeichen werden jetzt akzeptiert
+- Korrigiert: Doppelte Division x/y/z rechnete falsch!
+- Korrigiert: Instruktionen in Spalte 1 werden nicht akzeptiert,
+  missverstaendliche Fehlermeldung verbessert
+- Korrigiert: Direktiven nach einer Marke in der gleichen Zeile
+  werden ueberlesen und nicht ausgefuehrt, Fehlermeldung
+  hinzugefuegt
+- Hinzugefuegt: Kommandozeilenoption E fuer kurze (Default-Ein-
+  stellung) oder laengere Fehlermeldungen
+
+Dezember 2002: Version 0.1 Beta (Erstveroeffentlichung)
+
+
+Nutzungsbedingungen
+-------------------
+
+- Copyright fuer alle Versionen:
+  (C)2002...2020 by Gerhard Schmidt
+- Nutzung des Quellcodes und der kompilierten Versionen fuer
+  nichtkommerzielle Zwecke frei. Weiterverbreitung nur unter
+  Beibehaltung der enthaltenen Copyright-Angaben zulaessig.
+- Keine Garantie fuer korrekte Funktion der Software.
+- Fehlermeldungen (mit Quellcode, allen Include-Dateien und
+  Listfile) sowie Featurewuensche mit Betreff
+  "gavrasm 4.8" bitte an gavrasm(at)avr-asm-tutorial.net.

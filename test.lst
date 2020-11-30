@@ -1,0 +1,102 @@
+gavrasm Gerd's AVR assembler version 4.8 (C)2020 by DG4FAC
+----------------------------------------------------------
+Quelldatei:  test.asm
+Hexdatei:    test.hex
+Eepromdatei: test.eep
+Kompiliert:  24.11.2020, 23:08:16
+Durchgang:   2
+     1: .DEVICE attiny85
+     2:   .equ fRC    = 9600000
+     3:   .equ fCLKPR = 8
+     4:   .equ pTC0   = 8      ; (0<<CS02)(1<<CS01)(0<<CS00)
+     5:   .equ millis = 1000
+     6: 
+     7:   .def rTemp    = r16
+     8: 
+     9: 
+    10:   .equ LED2 = 1
+    11:   .equ LED1 = 0
+    12:   .equ TASTER = 4
+    13:   .def rFlag = r25
+    14: 
+    15: .MACRO mInitPort
+    16:   ldi rTemp, @1
+    17:   out @0, rTemp
+    18:   .ENDM
+    19: 
+    20:   .cseg
+    21: .org 0; ######## Vektortabelle  ############################
+    22: 000000   C009  rjmp RESET    ; 0 - RESET
+    23: 000001   9518  reti			; 1 - INT0
+    24: 000002   9518  reti          ; 2 - PCINT
+    25: 000003   9518  reti			; 3 - TIM0_OVF
+    26: 000004   9518  reti			; 4 - EE_RDY
+    27: 000005   9518  reti			; 5 - ANA_COMP
+    28: 000006   9518  reti          ; 6 - TIM0_COMPA
+    29: 000007   9518  reti			; 7 - TIM0_COMPB
+    30: 000008   9518  reti			; 8 - WDT
+    31: 000009   9518  reti			; 9 - ADC
+    32: 
+    33: 
+    34: RESET:
+    35:   mInitPort SPH,    HIGH(RAMEND)
+    36:   mInitPort SPL,    LOW(RAMEND)
+    37:   mInitPort MCUCR,  (1<<SE)                            ; schlafen erlaubt
+    38: 
+    39: 000010   9478  sei
+    40: LOOP:
+    41: 000011   9AB8  sbi DDRB, LED1  ; als Ausgang für LED
+    42: 000012   9AB9  sbi DDRB, LED2
+    43: 000013   9AC4  sbi PORTB,TASTER   ; PULL-UP für Taster
+    44: 
+    45: 000014   E090  ldi rFlag, 0
+    46: 
+    47: abfrage:
+    48: 000015   3090  cpi rFlag, 0
+    49: 000016   F411  brne an
+    50: 000017   9AC0  sbi PORTB, LED1
+    51: 000018   C001  rjmp w
+    52:     an: 
+    53: 000019   98C0  cbi PORTB, LED1
+    54: 
+    55:     w:
+    56: 00001A   98C1  cbi  PORTB, LED2  ; LED2 leuchet, solange Taste losgelassen
+    57: 00001B   99B4  sbic PINB, TASTER ; wenn Taster an (gnd an PB4) überspringe
+    58: 00001C   CFF8  rjmp abfrage
+    59: 
+    60: 00001D   3090  cpi rFlag,0
+    61: 00001E   F411  brne led_aus
+    62: 00001F   E091  ldi rFlag,1
+    63: 000020   C001  rjmp tasteloslassen
+    64:     led_aus:
+    65: 000021   E090  ldi rFlag,0 
+    66:     tasteloslassen:     ; warte bvis Tasste losgelassen, und
+    67: 000022   D004  rcall warte
+    68: 000023   9AC1  sbi PORTB,LED2     ; solange LED2 aus
+    69: 000024   9BB4  sbis PINB, TASTER
+    70: 000025   CFFC  rjmp tasteloslassen
+    71: 000026   CFEE  rjmp abfrage
+    72: 
+    73: 
+    74: 
+    75: warte:
+    76: 000027   E6D4  ldi yh, 100
+    77: 000028   E0C0  ldi yl, 0
+    78: w2:
+    79: 000029   9721  sbiw yl, 1
+    80: 00002A   F7F1  brne w2
+    81: 00002B   9508  ret
+    82: 
+    83: 
+    84: 00002C   9588  sleep
+    85: 00002D   0000  nop
+    86: 00002E   CFE2  rjmp LOOP
+ -> Warnung 001: 4 Symbol(e) definiert, aber nicht benutzt!
+
+Programm        :       47 words.
+Konstanten      :        0 words.
+Programm Gesamt :       47 words.
+Eepromnutzung   :        0 bytes.
+Datensegment    :        0 bytes.
+Kompilation fertig, keine Fehler.
+Kompilation beendet 24.11.2020, 23:08:16

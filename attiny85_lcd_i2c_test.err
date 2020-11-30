@@ -1,0 +1,200 @@
+gavrasm Gerd's AVR assembler version 4.8 (C)2020 by DG4FAC
+----------------------------------------------------------
+Quelldatei:  attiny85_lcd_i2c_test.asm
+Hexdatei:    attiny85_lcd_i2c_test.hex
+Eepromdatei: attiny85_lcd_i2c_test.eep
+Kompiliert:  24.11.2020, 23:31:52
+Durchgang:   2
+Fehler ==>   rcall lcd_init
+[attiny85_lcd_i2c_test.asm,127] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_INIT)!
+Fehler ==>   rcall lcd_init
+[attiny85_lcd_i2c_test.asm,127] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_INIT)!
+Fehler ==>   rcall lcd_clear
+[attiny85_lcd_i2c_test.asm,134] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_CLEAR)!
+Fehler ==>   rcall lcd_clear
+[attiny85_lcd_i2c_test.asm,134] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_CLEAR)!
+Fehler ==>   rcall lcd_row_1
+[attiny85_lcd_i2c_test.asm,135] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_1)!
+Fehler ==>   rcall lcd_row_1
+[attiny85_lcd_i2c_test.asm,135] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_1)!
+Fehler ==>   rcall lcd_string
+[attiny85_lcd_i2c_test.asm,139] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_STRING)!
+Fehler ==>   rcall lcd_string
+[attiny85_lcd_i2c_test.asm,139] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_STRING)!
+Fehler ==>   rcall lcd_row_2
+[attiny85_lcd_i2c_test.asm,146] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_2)!
+Fehler ==>   rcall lcd_row_2
+[attiny85_lcd_i2c_test.asm,146] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_2)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,148] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,148] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,150] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,150] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,152] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,152] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,154] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,154] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,156] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,156] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>     .equ    n5ms = (c5ms-16)/ 4 *  (cXTAL / 1000000)
+[mylcd.asm,67] 007: Undefinierte Konstante, Variable, Marke oder Device (CXTAL)!
+Fehler ==>     .equ    n5ms = (c5ms-16)/ 4 *  (cXTAL / 1000000)
+[mylcd.asm,67] 041: Kann die rechte Seite der EQU/SET/DEF-Direktive nicht aufloesen!
+Fehler ==>     ldi     rLcdC,0 ; init pseudo Control Register
+[mylcd.asm,86] 018: Registerwert undefiniert!
+Fehler ==>     ldi     rLcdC,0 ; init pseudo Control Register
+[mylcd.asm,86] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     sbr     rLcdC,  1<<Bkl
+[mylcd.asm,87] 018: Registerwert undefiniert!
+Fehler ==>     sbr     rLcdC,  1<<Bkl
+[mylcd.asm,87] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,92] 007: Undefinierte Konstante, Variable, Marke oder Device (CLCDADDR)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,92] 025: Konstantenausdruck (CLCDADDR) nicht auswertbar!
+Fehler ==>     sbr  rLcdC,1<<Rs ; setze RS-Bit
+[mylcd.asm,113] 018: Registerwert undefiniert!
+Fehler ==>     sbr  rLcdC,1<<Rs ; setze RS-Bit
+[mylcd.asm,113] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     cbr   rLcdC, 1<<Rs ; loesche RS
+[mylcd.asm,117] 018: Registerwert undefiniert!
+Fehler ==>     cbr   rLcdC, 1<<Rs ; loesche RS
+[mylcd.asm,117] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,121] 007: Undefinierte Konstante, Variable, Marke oder Device (CLCDADDR)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,121] 025: Konstantenausdruck (CLCDADDR) nicht auswertbar!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,131] 007: Undefinierte Konstante, Variable, Marke oder Device (CLCDADDR)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,131] 025: Konstantenausdruck (CLCDADDR) nicht auswertbar!
+Fehler ==>     cbr  rLcdC,1<<Rs ;  RS = 0, weil commando
+[mylcd.asm,132] 018: Registerwert undefiniert!
+Fehler ==>     cbr  rLcdC,1<<Rs ;  RS = 0, weil commando
+[mylcd.asm,132] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     sbr     rLcdC,  1<<Rw ; R/W = 1, weil lesen
+[mylcd.asm,145] 018: Registerwert undefiniert!
+Fehler ==>     sbr     rLcdC,  1<<Rw ; R/W = 1, weil lesen
+[mylcd.asm,145] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     cbr     rLcdC,  1<<Rw  ; R/W loeschen
+[mylcd.asm,149] 018: Registerwert undefiniert!
+Fehler ==>     cbr     rLcdC,  1<<Rw  ; R/W loeschen
+[mylcd.asm,149] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,157] 018: Registerwert undefiniert!
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,157] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,166] 018: Registerwert undefiniert!
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,166] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+Fehler ==>     .equ c4us     = cXTAL/1000000
+[myi2c.asm,11] 007: Undefinierte Konstante, Variable, Marke oder Device (CXTAL)!
+Fehler ==>     .equ c4us     = cXTAL/1000000
+[myi2c.asm,11] 041: Kann die rechte Seite der EQU/SET/DEF-Direktive nicht aufloesen!
+Fehler ==>     sbi     PORT_USI, PIN_SCL ; Kurz darauf öffnet der Master den SCL
+[myi2c.asm,25] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SCL ; Kurz darauf öffnet der Master den SCL
+[myi2c.asm,25] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     sbis    PIN_USI,  PIN_SCL  ; Warte bis der Bus frei ist => SCL = High
+[myi2c.asm,28] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_USI)!
+Fehler ==>     sbis    PIN_USI,  PIN_SCL  ; Warte bis der Bus frei ist => SCL = High
+[myi2c.asm,28] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA
+[myi2c.asm,33] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA
+[myi2c.asm,33] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbi     DDR_USI,  PIN_SCL
+[myi2c.asm,34] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SCL
+[myi2c.asm,34] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     sbi     PORT_USI, PIN_SCL
+[myi2c.asm,35] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SCL
+[myi2c.asm,35] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA
+[myi2c.asm,36] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA
+[myi2c.asm,36] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA   ; START COND:  zuerst SDA auf LOW
+[myi2c.asm,40] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA   ; START COND:  zuerst SDA auf LOW
+[myi2c.asm,40] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL   ;          ..und dann SCL auf LOW
+[myi2c.asm,42] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL   ;          ..und dann SCL auf LOW
+[myi2c.asm,42] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA
+[myi2c.asm,46] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA
+[myi2c.asm,46] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA  ; STOP COND: SDA geht hoch wärend SCL schon hoch ist
+[myi2c.asm,48] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA  ; STOP COND: SDA geht hoch wärend SCL schon hoch ist
+[myi2c.asm,48] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; vorladen als 0
+[myi2c.asm,55] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; vorladen als 0
+[myi2c.asm,55] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ;  ...doch als 1
+[myi2c.asm,57] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ;  ...doch als 1
+[myi2c.asm,57] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,59] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,59] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; PULL-UP und
+[myi2c.asm,65] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; PULL-UP und
+[myi2c.asm,65] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; als Eingang
+[myi2c.asm,66] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; als Eingang
+[myi2c.asm,66] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbic    PIN_USI,  PIN_SDA ; jetzt lese ACK ...also 0 wenn ok
+[myi2c.asm,69] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_USI)!
+Fehler ==>     sbic    PIN_USI,  PIN_SDA ; jetzt lese ACK ...also 0 wenn ok
+[myi2c.asm,69] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; pull up
+[myi2c.asm,75] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; pull up
+[myi2c.asm,75] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; auf empfang
+[myi2c.asm,76] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; auf empfang
+[myi2c.asm,76] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbic    PIN_USI,  PIN_SDA
+[myi2c.asm,83] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_USI)!
+Fehler ==>     sbic    PIN_USI,  PIN_SDA
+[myi2c.asm,83] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,85] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,85] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; auf 0 
+[myi2c.asm,89] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; auf 0 
+[myi2c.asm,89] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; als Ausgang
+[myi2c.asm,90] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; als Ausgang
+[myi2c.asm,90] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,96] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,96] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; wieder als ausgang und bleibt als HIGH!!!
+[myi2c.asm,97] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; wieder als ausgang und bleibt als HIGH!!!
+[myi2c.asm,97] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+Kompilation abgebrochen, 96 Fehler!

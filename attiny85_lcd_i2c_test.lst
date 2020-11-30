@@ -1,0 +1,724 @@
+gavrasm Gerd's AVR assembler version 4.8 (C)2020 by DG4FAC
+----------------------------------------------------------
+Quelldatei:  attiny85_lcd_i2c_test.asm
+Hexdatei:    attiny85_lcd_i2c_test.hex
+Eepromdatei: attiny85_lcd_i2c_test.eep
+Kompiliert:  24.11.2020, 23:31:52
+Durchgang:   2
+     1: .DEVICE attiny85
+     2:   .equ fRC       = 8000000
+     3:   .equ fCLKPR    = 1
+     4:   .equ pTC0      = 256      ; (1<<CS02)|(0<<CS01)|(0<<CS00)
+     5:   .equ i4ms      = 125      ; 4 ms takt for OCRA
+     6:   .equ i05s      = 125      ; halbe sekunde
+     7:   .equ i200ms    = 70
+     8:   .equ iPause    = 3     
+     9:   .equ i1s       = 250 
+    10: 
+    11:   .def rTime    = r1
+    12:   .def rT60     = r2
+    13:   .def rT24     = r3
+    14:   .def rSec     = r4
+    15:   .def rMin     = r5
+    16:   .def rStd     = r6
+    17:   .def rTC      = r7
+    18:   .def rSREG    = r15
+    19:   .def rTemp    = r16
+    20:   .def rITmp1   = r17
+    21:   .def rCnt     = r18
+    22:   .def rEep     = r19
+    23:   .def rITmp0   = r20
+    24:   .def rTmp0    = r21
+    25:   .def rPause   = r22
+    26:   .def rDelay   = r23
+    27:   .def rAddr    = r24
+    28:   .def rData    = r25
+    29:   .def rErr     = r26
+    30:   .def rCurBit  = r27
+    31: 
+    32:   .equ  LED    = PB4
+    33: .MACRO mIntPort
+    34:   ldi rTemp, @1
+    35:   out @0, rTemp
+    36:   .ENDM
+    37: .MACRO mLED_AN
+    38:   cbi PORTB, LED  ; LED an
+    39:   .ENDM
+    40: .MACRO mLED_AUS
+    41:   sbi PORTB, LED  ; LED aus
+    42:   .ENDM
+    43: .MACRO mWarte
+    44:   ldi rCnt, @0
+    45:   warte1:
+    46:   tst rCnt
+    47:   brne warte1
+    48:   .ENDM
+    49: .MACRO mTogle_LED
+    50:   ldi rTmp0, 1<<LED
+    51:   in  rTemp, PORTB
+    52:   eor rTemp, rTmp0
+    53:   out PORTB, rTemp
+    54:   .ENDM
+    55: .cseg
+    56: .org 0; ######## Vektortabelle  ############################
+    57: 000000   C025  rjmp RESET  ; 1 - RESET External Pin, Power-on Reset,
+    58: 000001   9518  reti        ; 2 - INT0 External Interrupt Request 0
+    59: 000002   9518  reti        ; 3 - PCINT0 Pin Change Interrupt Request 0
+    60: 000003   9518  reti        ; 4 - TIMER1_COMPA Timer/Counter1 Compare Match A
+    61: 000004   9518  reti        ; 5 - TIMER1_OVF Timer/Counter1 Overflow
+    62: 000005   9518  reti        ; 6 - TIMER0_OVF Timer/Counter0 Overflow
+    63: 000006   9518  reti        ; 7 - EE_RDY EEPROM Ready
+    64: 000007   9518  reti        ; 8 - ANA_COMP Analog Comparator
+    65: 000008   9518  reti        ; 9 - ADC ADC Conversion Complete
+    66: 000009   9518  reti        ;10 - TIMER1_COMPB Timer/Counter1 Compare Match B
+    67: 00000A   C004  rjmp TIMER0_COMPA;11 - Compare Match A
+    68: 00000B   9518  reti        ;12 - TIMER0_COMPB Timer/Counter0 Compare Match B
+    69: 00000C   9518  reti        ;13 - WDT Watchdog Time-out
+    70: 00000D   9518  reti        ;14 - USI_START USI START
+    71: 00000E   9518  reti        ;15 - USI_OVF USI Overflow
+    72: TIMER0_COMPA:; ######## Timer Compare  ############################
+    73: 00000F   B6FF  in    rSREG,SREG
+    74: 000010   2322  tst   rCnt
+    75: 000011   F011  breq  isr11_e
+    76: 000012   952A  dec   rCnt
+    77: 000013   C000  rjmp  isr11_e
+    78:   isr11_e:
+    79: 000014   9473  inc rTC
+    80: 000015   1471  cp rTC, rTime
+    81: 000016   F469  brne t_ende
+    82: 000017   2477  clr rTC
+    83: 000018   9443  inc rSec
+    84: 000019   1442  cp rSec, rT60
+    85: 00001A   F449  brne t_ende
+    86: 00001B   2444  clr rSec
+    87: 00001C   9453  inc rMin
+    88: 00001D   1452  cp rMin, rT60
+    89: 00001E   F429  brne t_ende
+    90: 00001F   2455  clr rMin
+    91: 000020   9463  inc rStd
+    92: 000021   1463  cp rStd, rT24
+    93: 000022   F409  brne t_ende
+    94: 000023   2466  clr rStd
+    95:   ; hiert kommt tag
+    96:  t_ende:
+    97: 000024   BEFF  out SREG,rSREG
+    98: 000025   9518  reti
+    99: RESET:
+   100:   ; Zeit einstellen
+   101: 000026   EF0A  ldi rTemp, i1s
+   102: 000027   2E10  mov rTime, rTemp
+   103: 000028   E30C  ldi rTemp, 60
+   104: 000029   2E20  mov rT60,  rTemp
+   105: 00002A   E108  ldi rTemp, 24
+   106: 00002B   2E30  mov rT24, rTemp
+   107: 00002C   2477  clr rTC
+   108: 00002D   2444  clr rSec
+   109: 00002E   2455  clr rMin
+   110: 00002F   2466  clr rStd
+   111: 
+   112:   mIntPort SPL, LOW(RAMEND)
+   113:   mIntPort SPH, HIGH(RAMEND)
+   114:   mIntPort MCUCR, 1<<SE
+   115:   ; Ausgänge
+   116:   mIntPort DDRB,  (1<<LED)  ; Ein/Ausgänge
+   117:   ; Timer 0
+   118:   mIntPort TIMSK, (1<<OCIE0A)    ; erlaube OCR0A interrupt
+   119:   mIntPort TCCR0A, (0<<WGM02)|(1<<WGM01)|(0<<WGM00) ; CTC
+   120:   mIntPort OCR0A,  i4ms-1
+   121:   mIntPort TCCR0B, (1<<CS02)|(0<<CS01)|(0<<CS00)
+   122: 000040   9478  sei
+   123: START:
+   124:   mLED_AN
+   125:  a0:
+   126: 000042   E48C  ldi   rAddr, 0x4C ; Slave Adresse  4C/2zeilig - 4E/4zeilig
+Fehler ==>   rcall lcd_init
+[attiny85_lcd_i2c_test.asm,127] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_INIT)!
+Fehler ==>   rcall lcd_init
+[attiny85_lcd_i2c_test.asm,127] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_INIT)!
+   127: 000043   D000  rcall lcd_init
+   128: 000044   3FAF  cpi   rErr, 0xFF
+   129: 000045   F441  brne  a1
+   130:   mWarte i05s
+   131:   mTogle_LED
+   132: 00004D   CFF4  rjmp a0
+   133:  a1:  
+Fehler ==>   rcall lcd_clear
+[attiny85_lcd_i2c_test.asm,134] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_CLEAR)!
+Fehler ==>   rcall lcd_clear
+[attiny85_lcd_i2c_test.asm,134] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_CLEAR)!
+   134: 00004E   D000  rcall lcd_clear
+Fehler ==>   rcall lcd_row_1
+[attiny85_lcd_i2c_test.asm,135] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_1)!
+Fehler ==>   rcall lcd_row_1
+[attiny85_lcd_i2c_test.asm,135] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_1)!
+   135: 00004F   D000  rcall lcd_row_1
+   136: 000050   E49F  ldi rData, "O"
+   137: 000051   E0F0  ldi r31, HIGH(MyStr*2)
+   138: 000052   ECE8  ldi r30, LOW(MyStr*2)
+Fehler ==>   rcall lcd_string
+[attiny85_lcd_i2c_test.asm,139] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_STRING)!
+Fehler ==>   rcall lcd_string
+[attiny85_lcd_i2c_test.asm,139] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_STRING)!
+   139: 000053   D000  rcall lcd_string
+   140: 000054   2D04  mov rTemp,rSec
+   141: LOOP:
+   142: 000055   E72D  ldi rCnt, i05s
+   143:   l1:
+   144: 000056   2322  tst rCnt
+   145: 000057   F7F1  brne l1
+Fehler ==>   rcall lcd_row_2
+[attiny85_lcd_i2c_test.asm,146] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_2)!
+Fehler ==>   rcall lcd_row_2
+[attiny85_lcd_i2c_test.asm,146] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_ROW_2)!
+   146: 000058   D000  rcall lcd_row_2
+   147: 000059   2D96  mov  rData, rStd
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,148] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,148] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+   148: 00005A   D000  rcall lcd_dec
+   149: 00005B   E39A  ldi rData,":"
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,150] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,150] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+   150: 00005C   D000  rcall lcd_data
+   151: 00005D   2D95  mov  rData, rMin
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,152] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,152] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+   152: 00005E   D000  rcall lcd_dec
+   153: 00005F   E39A  ldi rData,":"
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,154] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+Fehler ==>   rcall lcd_data
+[attiny85_lcd_i2c_test.asm,154] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DATA)!
+   154: 000060   D000  rcall lcd_data
+   155: 000061   2D94  mov  rData, rSec
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,156] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+Fehler ==>   rcall lcd_dec
+[attiny85_lcd_i2c_test.asm,156] 007: Undefinierte Konstante, Variable, Marke oder Device (LCD_DEC)!
+   156: 000062   D000  rcall lcd_dec
+   157: 000063   CFF1  rjmp  LOOP
+   158: MyStr:
+   159:   ;
+   160:   .DB "Hallo, Welt!",0,0
+        000064 6148 6C6C 2C6F 5720
+        000068 6C65 2174 0000
+   161: sOKp:
+   162:   ;
+   163:   .DB "OK+",0
+        00006B 4B4F 002B
+   164: sOKm:
+   165:   ;
+   166:   .DB "OK-",0
+        00006D 4B4F 002D
+   167: ;**************************************
+   168: .include "mylcd.asm"
+  Datei einfuegen mylcd.asm
+     1: ; .equ cXTAL   = muss Taktfrequenz haben
+     2: ; .def rLcdC   = r22
+     3: ; .equ cLcdAddr= 0x4C
+     4: ; *** i2c ***
+     5: ; .def rAddr   = r20
+     6: ; .def rData   = r21
+     7: ;---------------------------------------------
+     8: ; Pins an PCF8574
+     9: ; Bit 7 - Bit4  Daten immer obere Nibble first
+    10: ;   LCD     LCD         IO PINS
+    11: ;   PIN     FUNCTION    PCF8574A        Comments
+    12: ;--------------------------------------------------------------------------
+    13: ;   1       VSS                         GND
+    14: ;   2       VCC                         +5V
+    15: ;   3       VO          P3              10K POT VCC to GND  Contrast Voltage
+    16: ;   4       RS          P0
+    17: ;   5       RW          P1              Busy Detection
+    18: ;   6       E           P2
+    19: ;   7-10    DB0-3                       Not used - 4-bit mode used
+    20: ;   11      DB4         P4
+    21: ;   12      DB5         P5
+    22: ;   13      DB6         P6
+    23: ;   14      DB7         P7
+    24: ;
+    25: ;   Note: PCF8574A Address pins: A0=A1=A2=0
+    26: ; -------- Hardware --------------------
+    27: ;   PCF8574      _______
+    28: ;             1 /       |16
+    29: ;       GND o--|A0   VDD|--o +5V
+    30: ;             2|        |15
+    31: ;       GND o--|A1   SDA|--o SDA
+    32: ;             3|        |14
+    33: ;       GND o--|A2   SCL|--o SCL
+    34: ;             4|        |13
+    35: ;    LCD-RS o--|P0   INT|--o 
+    36: ;             5|        |12   
+    37: ;    LCD-RW o--|P1    P7|--o LCD DB7
+    38: ;             6|        |11
+    39: ;    LCD-E  o--|P2    P6|--o LCD-DB6
+    40: ;             7|        |10
+    41: ;    LCD-V0 o--|P3    P5|--o LCD-DB5
+    42: ;             7|        |9
+    43: ;       GND o--|VSS   P4|--o LCD-DB4
+    44: ;              |________|
+    45: ;
+    46: ;---------------------------------------------
+    47:   .equ Bkl = 3  ;// LED An/Aus 
+    48:   .equ En  = 2  ;// Enable bit
+    49:   .equ Rw  = 1  ;// Read/Write bit
+    50:   .equ Rs  = 0  ;// Register select bit
+    51: ; ------ Warteroutinen -----------------------
+    52: Warte50ms:  ; Warteroutine 50 ms
+    53: 00006F   930F  push    r16
+    54: 000070   B70F  in      r16, sreg
+    55: 000071   930F  push    r16
+    56: 000072   E00A  ldi     r16,10
+    57:     w50ms:
+    58: 000073   D006  rcall   Warte5ms
+    59: 000074   950A  dec     r16
+    60: 000075   F7E9  brne    w50ms
+    61: 000076   910F  pop     r16
+    62: 000077   BF0F  out     sreg, r16
+    63: 000078   910F  pop     r16
+    64: 000079   9508  ret
+    65: Warte5ms:   ; Warteroutine 5 ms
+    66:     .equ    c5ms = 5000
+    67:     .equ    n5ms = (c5ms-16)/ 4 *  (cXTAL / 1000000)
+Fehler ==>     .equ    n5ms = (c5ms-16)/ 4 *  (cXTAL / 1000000)
+[mylcd.asm,67] 007: Undefinierte Konstante, Variable, Marke oder Device (CXTAL)!
+Fehler ==>     .equ    n5ms = (c5ms-16)/ 4 *  (cXTAL / 1000000)
+[mylcd.asm,67] 041: Kann die rechte Seite der EQU/SET/DEF-Direktive nicht aufloesen!
+    68: 00007A   93DF  push    r29
+    69: 00007B   93CF  push    r28
+    70: 00007C   B7CF  in      r28,sreg
+    71: 00007D   93CF  push    r28
+    72: 
+    73: 00007E   E0D0  ldi     r29,  HIGH(n5ms)
+    74: 00007F   E0C0  ldi     r28,   LOW(n5ms)
+    75:     Warte: ; Warteroutine Z Takte, Takte = 4*(n-1)+11 = 4*n + 7
+    76: 000080   9721  sbiw    r28,  1 ; + 2
+    77: 000081   F7F1  brne    Warte ; + 1 / 2
+    78: 
+    79: 000082   91CF  pop     r28
+    80: 000083   BFCF  out     sreg, r28
+    81: 000084   91CF  pop     r28 ; + 2
+    82: 000085   91DF  pop     r29 ; +2
+    83: 000086   9508  ret ; + 4, Gesamt=4*n+18
+    84: ; --------- Hauptteil ------------------------
+    85: LcdInit:   ; --------- LCD-Ansteuerung Init ----------
+Fehler ==>     ldi     rLcdC,0 ; init pseudo Control Register
+[mylcd.asm,86] 018: Registerwert undefiniert!
+Fehler ==>     ldi     rLcdC,0 ; init pseudo Control Register
+[mylcd.asm,86] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+    86: 000087   E000  ldi     rLcdC,0 ; init pseudo Control Register
+Fehler ==>     sbr     rLcdC,  1<<Bkl
+[mylcd.asm,87] 018: Registerwert undefiniert!
+Fehler ==>     sbr     rLcdC,  1<<Bkl
+[mylcd.asm,87] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+    87: 000088   6008  sbr     rLcdC,  1<<Bkl
+    88: 000089   DFE5  rcall Warte50ms ; Warte 50 ms bis LCD hochgefahren ist
+    89: 
+    90: 00008A   939F  push rData
+    91: 00008B   938F  push rAddr
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,92] 007: Undefinierte Konstante, Variable, Marke oder Device (CLCDADDR)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,92] 025: Konstantenausdruck (CLCDADDR) nicht auswertbar!
+    92: 00008C   0000  ldi  rAddr, cLcdAddr
+    93: 00008D   E390  ldi   rData,0x30 ; Versetze in 8-Bit-Modus (drei Mal)
+    94: 00008E   D030  rcall _LcdEnable 
+    95: 00008F   D02F  rcall _LcdEnable
+    96: 000090   D02E  rcall _LcdEnable
+    97: 000091   E290  ldi   rData,0x20 ; Schalte in 4-Bit-Modus um
+    98: 000092   D02C  rcall _LcdEnable
+    99: 000093   918F  pop  rAddr
+   100:     ; Funktionseinstellungen LCD
+   101: 000094   E298  ldi   rData,0x28 ; 4-Bit-Modus, 4 Zeilen, 5*7
+   102: 000095   D00B  rcall LcdCmd
+   103: 000096   E091  ldi   rData,0x01 ; lösche Display
+   104: 000097   D009  rcall LcdCmd
+   105: 000098   E09C  ldi   rData,0x0C ; B3 = 1, Display an (B2) , Cursor(B1), Blinken (B0)
+   106: 000099   D007  rcall LcdCmd
+   107: 00009A   E096  ldi   rData,0x06        ; Autoindent
+   108: 00009B   D005  rcall LcdCmd
+   109: 00009C   919F  pop  rData
+   110: 00009D   9508  ret
+   111: LcdData:  ; Datenwort-Ausgabe im 4-Bit-Modus Daten in rmp
+   112: 00009E   D00D  rcall _LcdBusy ; warte bis busy = Null
+Fehler ==>     sbr  rLcdC,1<<Rs ; setze RS-Bit
+[mylcd.asm,113] 018: Registerwert undefiniert!
+Fehler ==>     sbr  rLcdC,1<<Rs ; setze RS-Bit
+[mylcd.asm,113] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   113: 00009F   6001  sbr  rLcdC,1<<Rs ; setze RS-Bit
+   114: 0000A0   C002  rjmp _LcdWrite ; gib Byte in rmp aus
+   115: LcdCmd:  ; Kontrollwort-Ausgabe im 4-Bit-Modus Daten in rData
+   116: 0000A1   D00A  rcall _LcdBusy ; warte bis busy = Null
+Fehler ==>     cbr   rLcdC, 1<<Rs ; loesche RS
+[mylcd.asm,117] 018: Registerwert undefiniert!
+Fehler ==>     cbr   rLcdC, 1<<Rs ; loesche RS
+[mylcd.asm,117] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   117: 0000A2   7F0E  cbr   rLcdC, 1<<Rs ; loesche RS
+   118: _LcdWrite:   ; Ausgabe Byte im 4-Bit-Modus mit Busy
+   119: 0000A3   939F  push    rData
+   120: 0000A4   938F  push rAddr
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,121] 007: Undefinierte Konstante, Variable, Marke oder Device (CLCDADDR)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,121] 025: Konstantenausdruck (CLCDADDR) nicht auswertbar!
+   121: 0000A5   0000  ldi  rAddr, cLcdAddr
+   122: 0000A6   939F  push    rData
+   123: 0000A7   D017  rcall   _LcdEnable
+   124: 0000A8   919F  pop     rData
+   125: 0000A9   9592  swap    rData          ; Nibble vertauschen
+   126: 0000AA   D014  rcall   _LcdEnable
+   127: 0000AB   C00A  rjmp    _lcd_exit
+   128: _LcdBusy:    ; Warte bis Busy Null, Steuerung
+   129: 0000AC   939F  push rData       ; rette
+   130: 0000AD   938F  push rAddr
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,131] 007: Undefinierte Konstante, Variable, Marke oder Device (CLCDADDR)!
+Fehler ==>     ldi  rAddr, cLcdAddr
+[mylcd.asm,131] 025: Konstantenausdruck (CLCDADDR) nicht auswertbar!
+   131: 0000AE   0000  ldi  rAddr, cLcdAddr
+Fehler ==>     cbr  rLcdC,1<<Rs ;  RS = 0, weil commando
+[mylcd.asm,132] 018: Registerwert undefiniert!
+Fehler ==>     cbr  rLcdC,1<<Rs ;  RS = 0, weil commando
+[mylcd.asm,132] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   132: 0000AF   7F0E  cbr  rLcdC,1<<Rs ;  RS = 0, weil commando
+   133:     _LcdBusy1:
+   134: 0000B0   D008  rcall _LcdRead
+   135: 0000B1   939F  push  rData; Bit 7 Busybit
+   136: 0000B2   D006  rcall _LcdRead
+   137: 0000B3   919F  pop rData
+   138: 0000B4   FD97  sbrc rData,7       ; ueberspringe bei Busy=0
+   139: 0000B5   CFFA  rjmp _LcdBusy1      ; wiederhole bis Busy=0
+   140: _lcd_exit:
+   141: 0000B6   918F  pop  rAddr
+   142: 0000B7   919F  pop  rData
+   143: 0000B8   9508  ret ; fertig set carry , wenn fehler
+   144: _LcdRead:
+Fehler ==>     sbr     rLcdC,  1<<Rw ; R/W = 1, weil lesen
+[mylcd.asm,145] 018: Registerwert undefiniert!
+Fehler ==>     sbr     rLcdC,  1<<Rw ; R/W = 1, weil lesen
+[mylcd.asm,145] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   145: 0000B9   6002  sbr     rLcdC,  1<<Rw ; R/W = 1, weil lesen
+   146: 0000BA   D007  rcall   _LcdEnOn
+   147: 0000BB   D065  rcall   i2c_read     ; lese oberes Nibble
+   148: 0000BC   D00B  rcall   _LcdEnOff
+Fehler ==>     cbr     rLcdC,  1<<Rw  ; R/W loeschen
+[mylcd.asm,149] 018: Registerwert undefiniert!
+Fehler ==>     cbr     rLcdC,  1<<Rw  ; R/W loeschen
+[mylcd.asm,149] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   149: 0000BD   7F0D  cbr     rLcdC,  1<<Rw  ; R/W loeschen
+   150: 0000BE   9508  ret
+   151: _LcdEnable:
+   152: 0000BF   D002  rcall   _LcdEnOn
+   153: 0000C0   DFB9  rcall   Warte5ms
+   154: 0000C1   C006  rjmp    _LcdEnOff
+   155: _LcdEnOn:
+   156: 0000C2   7F90  andi  rData, 0xF0  ; unteres Nibble loeschen
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,157] 018: Registerwert undefiniert!
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,157] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   157: 0000C3   0000  or    rData, rLcdC ; mit Steuerung verknüpfen
+   158: 0000C4   D054  rcall i2c_write    ; vorbereiten
+   159:   ;rcall Warte5ms
+   160: 0000C5   6094  sbr   rData,1<<En  ; setze LCD-Enable
+   161: 0000C6   D052  rcall i2c_write    ; LCD-Enable aktivieren
+   162:   ;rcall Warte5ms
+   163: 0000C7   9508  ret
+   164: _LcdEnOff:
+   165: 0000C8   7F90  andi  rData, 0xF0  ; unteres Nibble loeschen. LCD-Enable gelöscht
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,166] 018: Registerwert undefiniert!
+Fehler ==>   or    rData, rLcdC ; mit Steuerung verknüpfen
+[mylcd.asm,166] 017: Registerwert (RR-1) ausserhalb zulaessiger Bereich (0..31)!
+   166: 0000C9   0000  or    rData, rLcdC ; mit Steuerung verknüpfen
+   167: 0000CA   D04E  rcall i2c_write    ; LCD-Enable aktivieren
+   168: 0000CB   9508  ret
+   169: _LcdDone:
+   170: ; -------------------------------------------
+   171: ; um die Größe nicht auszudehnen, folgendes:
+   172: ;
+   173: ;
+   174: ; ----------- Beleuchtung an ----------------
+   175: ;
+   176: ;  sbr    rLcdC,  1<<Bkl
+   177: ;  rcall  _LcdBusy
+   178: ;
+   179: ; ----------- Beleuchtung aus ---------------
+   180: ;
+   181: ;  cbr    rLcdC,  1<<Bkl
+   182: ;  rcall  _LcdBusy
+   183: ;
+   184: ; ----------- ASCII am Cursor ausgeben ------
+   185: ;
+   186: ;  ldi    rData,  'X'
+   187: ;  rcall  LcdData
+   188: ; 
+   189: ; -------- gehe zu Zeile 1/2/3/4 ------------ 
+   190: ;
+   191: ; 	ldi 	rData,  0x80    ; Zeile 1 oder
+   192: ; 	ldi 	rData,  0xC0    ; Zeile 2 oder
+   193: ; 	ldi 	rData,  0x80+16 ; Zeile 3 oder
+   194: ; 	ldi 	rData,  0xC0+16 ; Zeile 4
+   195: ; 	rcall 	LcdCmd
+   196: ;
+   197: ; --------- Display löschen -----------------
+   198: ;
+   199: ; 	ldi 	rData,  0x01
+   200: ;
+   201: ; --------- Display off, Cursor off ---------
+   202: ;      clearing display without clearing
+   203: ;               DDRAM content
+   204: ;
+   205: ; 	ldi 	rData,  0x08
+   206: ;
+   207: ; --------- Display on, Cursor on  ----------
+   208: ;
+   209: ; 	ldi 	rData,  0x0E
+   210: ;
+   211: ; --------- Display on, Cursor off ----------
+   212: ;
+   213: ; 	ldi  	rData,  0x0C
+   214: ;
+   215: ; --------- Display on, Cursor blinking -----
+   216: ;
+   217: ; 	ldi  	rData,  0x0F
+   218: ;
+   219: ; --------- Cursor left ---------------------
+   220: ;
+   221: ; 	ldi  	rData,  0x10
+   222: ;
+   223: ; --------- Cursor right --------------------
+   224: ;
+   225: ; 	ldi  	rData,  0x14
+   226: ;
+  Fortsetzung mit Datei attiny85_lcd_i2c_test.asm
+   169: .include "myi2c.asm"
+  Datei einfuegen myi2c.asm
+     1: 
+     2: ; Register müssen im Hauptprogramm definiert werden
+     3: ;    .equ DDR_USI  =  DDRB
+     4: ;    .equ PORT_USI =  PORTB
+     5: ;    .equ PIN_USI  =  PINB
+     6: ;    .equ PIN_SDA  =  PB0
+     7: ;    .equ PIN_SCL  =  PB1
+     8: ;    .def rAddr    =  r24
+     9: ;    .def rData    =  r23
+    10: Warte4us:
+    11:     .equ c4us     = cXTAL/1000000
+Fehler ==>     .equ c4us     = cXTAL/1000000
+[myi2c.asm,11] 007: Undefinierte Konstante, Variable, Marke oder Device (CXTAL)!
+Fehler ==>     .equ c4us     = cXTAL/1000000
+[myi2c.asm,11] 041: Kann die rechte Seite der EQU/SET/DEF-Direktive nicht aufloesen!
+    12: 0000CC   930F  push r16     ; 2
+    13: 0000CD   B70F  in  r16,sreg
+    14: 0000CE   930F  push r16
+    15: 0000CF   E000  ldi  r16, c4us  ;
+    16:     _delay_4m:
+    17: 0000D0   950A  dec r16      ; r16 * 1
+    18: 0000D1   F7F1  brne _delay_4m    ; r16 * 2 + 1
+    19: 0000D2   910F  pop  r16     ; 2
+    20: 0000D3   BF0F  out sreg, r16
+    21: 0000D4   910F  pop r16
+    22: 0000D5   9508  ret             ; 4 + 3 rcall   => 12 + 3*(r16-1)+2 =>  11 + 3r16
+    23: i2c_wait_scl:
+    24: 0000D6   DFF5  rcall   Warte4us
+Fehler ==>     sbi     PORT_USI, PIN_SCL ; Kurz darauf öffnet der Master den SCL
+[myi2c.asm,25] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SCL ; Kurz darauf öffnet der Master den SCL
+[myi2c.asm,25] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    25: 0000D7   0000  sbi     PORT_USI, PIN_SCL ; Kurz darauf öffnet der Master den SCL
+    26: 0000D8   DFF3  rcall   Warte4us
+    27:     i2c_wait_scl1:
+Fehler ==>     sbis    PIN_USI,  PIN_SCL  ; Warte bis der Bus frei ist => SCL = High
+[myi2c.asm,28] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_USI)!
+Fehler ==>     sbis    PIN_USI,  PIN_SCL  ; Warte bis der Bus frei ist => SCL = High
+[myi2c.asm,28] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    28: 0000D9   0000  sbis    PIN_USI,  PIN_SCL  ; Warte bis der Bus frei ist => SCL = High
+    29: 0000DA   CFFE  rjmp    i2c_wait_scl1
+    30: 0000DB   DFF0  rcall Warte4us
+    31: 0000DC   9508  ret
+    32: i2c_init:  ; es muss immer send oder recive folgen
+Fehler ==>     sbi     DDR_USI,  PIN_SDA
+[myi2c.asm,33] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA
+[myi2c.asm,33] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    33: 0000DD   0000  sbi     DDR_USI,  PIN_SDA
+Fehler ==>     sbi     DDR_USI,  PIN_SCL
+[myi2c.asm,34] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SCL
+[myi2c.asm,34] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    34: 0000DE   0000  sbi     DDR_USI,  PIN_SCL
+Fehler ==>     sbi     PORT_USI, PIN_SCL
+[myi2c.asm,35] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SCL
+[myi2c.asm,35] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    35: 0000DF   0000  sbi     PORT_USI, PIN_SCL
+Fehler ==>     sbi     PORT_USI, PIN_SDA
+[myi2c.asm,36] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA
+[myi2c.asm,36] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    36: 0000E0   0000  sbi     PORT_USI, PIN_SDA
+    37: 0000E1   9508  ret
+    38: i2c_start:
+    39: 0000E2   DFF3  rcall   i2c_wait_scl
+Fehler ==>     cbi     PORT_USI, PIN_SDA   ; START COND:  zuerst SDA auf LOW
+[myi2c.asm,40] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA   ; START COND:  zuerst SDA auf LOW
+[myi2c.asm,40] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    40: 0000E3   0000  cbi     PORT_USI, PIN_SDA   ; START COND:  zuerst SDA auf LOW
+    41: 0000E4   DFE7  rcall   Warte4us            ; oder Warte5us ?
+Fehler ==>     cbi     PORT_USI, PIN_SCL   ;          ..und dann SCL auf LOW
+[myi2c.asm,42] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL   ;          ..und dann SCL auf LOW
+[myi2c.asm,42] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    42: 0000E5   0000  cbi     PORT_USI, PIN_SCL   ;          ..und dann SCL auf LOW
+    43: 0000E6   DFE5  rcall   Warte4us            ; oder Warte5us ?
+    44: 0000E7   9508  ret     ; 
+    45: i2c_stop:   ; STOP condition
+Fehler ==>     cbi     PORT_USI, PIN_SDA
+[myi2c.asm,46] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA
+[myi2c.asm,46] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    46: 0000E8   0000  cbi     PORT_USI, PIN_SDA
+    47: 0000E9   DFEC  rcall   i2c_wait_scl
+Fehler ==>     sbi     PORT_USI, PIN_SDA  ; STOP COND: SDA geht hoch wärend SCL schon hoch ist
+[myi2c.asm,48] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA  ; STOP COND: SDA geht hoch wärend SCL schon hoch ist
+[myi2c.asm,48] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    48: 0000EA   0000  sbi     PORT_USI, PIN_SDA  ; STOP COND: SDA geht hoch wärend SCL schon hoch ist
+    49: 0000EB   9508  ret
+    50: i2c_send:   ; rAddr, Fehler = Carry set
+    51: 0000EC   938F  push    rAddr
+    52: 0000ED   930F  push    r16
+    53: 0000EE   E008  ldi     r16, 8  ; 8 Bits beginne mit Bit 7
+    54:     next_bit:
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; vorladen als 0
+[myi2c.asm,55] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; vorladen als 0
+[myi2c.asm,55] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    55: 0000EF   0000  cbi     PORT_USI, PIN_SDA ; vorladen als 0
+    56: 0000F0   FD87  sbrc    rAddr, 7          ; und prüfen MSB
+Fehler ==>     sbi     PORT_USI, PIN_SDA ;  ...doch als 1
+[myi2c.asm,57] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ;  ...doch als 1
+[myi2c.asm,57] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    57: 0000F1   0000  sbi     PORT_USI, PIN_SDA ;  ...doch als 1
+    58: 0000F2   DFE3  rcall   i2c_wait_scl      ; Der Master legt Bit  an SDA
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,59] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,59] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    59: 0000F3   0000  cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+    60: 0000F4   DFD7  rcall    Warte4us
+    61: 0000F5   0F88  lsl     rAddr             ; schiebe für das nächste Bit auf MSB pos.
+    62: 0000F6   950A  dec     r16               ; sind alle bitts übertragen?
+    63: 0000F7   F7B9  brne    next_bit
+    64:     getACK:
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; PULL-UP und
+[myi2c.asm,65] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; PULL-UP und
+[myi2c.asm,65] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    65: 0000F8   0000  sbi     PORT_USI, PIN_SDA ; PULL-UP und
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; als Eingang
+[myi2c.asm,66] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; als Eingang
+[myi2c.asm,66] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    66: 0000F9   0000  cbi     DDR_USI,  PIN_SDA ; als Eingang
+    67: 0000FA   DFDB  rcall   i2c_wait_scl      ; prüfe ob Slave noch Zeit braucht
+    68: 0000FB   9488  clc
+Fehler ==>     sbic    PIN_USI,  PIN_SDA ; jetzt lese ACK ...also 0 wenn ok
+[myi2c.asm,69] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_USI)!
+Fehler ==>     sbic    PIN_USI,  PIN_SDA ; jetzt lese ACK ...also 0 wenn ok
+[myi2c.asm,69] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    69: 0000FC   0000  sbic    PIN_USI,  PIN_SDA ; jetzt lese ACK ...also 0 wenn ok
+    70: 0000FD   9408  sec
+    71: 0000FE   C013  rjmp    i2c_ext           ; ende, wenn Fehler => Carry set
+    72: i2c_recive: ; rData <= byte
+    73: 0000FF   938F  push    rAddr
+    74: 000100   930F  push    r16
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; pull up
+[myi2c.asm,75] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     sbi     PORT_USI, PIN_SDA ; pull up
+[myi2c.asm,75] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    75: 000101   0000  sbi     PORT_USI, PIN_SDA ; pull up
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; auf empfang
+[myi2c.asm,76] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     cbi     DDR_USI,  PIN_SDA ; auf empfang
+[myi2c.asm,76] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    76: 000102   0000  cbi     DDR_USI,  PIN_SDA ; auf empfang
+    77: 000103   DFC8  rcall   Warte4us            ; oder Warte5us ?
+    78: 000104   2799  clr     rData
+    79: 000105   E008  ldi     r16, 8            ; 8 Bits beginne mit Bit 7
+    80:     next_bit_r:
+    81: 000106   0F99  lsl     rData             ; lsb frei machen
+    82: 000107   DFCE  rcall   i2c_wait_scl
+Fehler ==>     sbic    PIN_USI,  PIN_SDA
+[myi2c.asm,83] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_USI)!
+Fehler ==>     sbic    PIN_USI,  PIN_SDA
+[myi2c.asm,83] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    83: 000108   0000  sbic    PIN_USI,  PIN_SDA
+    84: 000109   6091  ori     rData,0b00000001  ; bit als 1 empfangen
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,85] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,85] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    85: 00010A   0000  cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+    86: 00010B   950A  dec     r16               ; sind alle bitts übertragen?
+    87: 00010C   F7C9  brne    next_bit_r
+    88:     sendACK:
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; auf 0 
+[myi2c.asm,89] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SDA ; auf 0 
+[myi2c.asm,89] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    89: 00010D   0000  cbi     PORT_USI, PIN_SDA ; auf 0 
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; als Ausgang
+[myi2c.asm,90] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; als Ausgang
+[myi2c.asm,90] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    90: 00010E   0000  sbi     DDR_USI,  PIN_SDA ; als Ausgang
+    91: 00010F   DFBC  rcall   Warte4us            ; oder Warte5us ?
+    92: 000110   DFC5  rcall   i2c_wait_scl      ; sende ACK ....
+    93: 000111   9488  clc
+    94: i2c_ext:    ; Ausgang ; bei Fehler rErr = 0xFF
+    95: 000112   DFB9  rcall   Warte4us
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,96] 007: Undefinierte Konstante, Variable, Marke oder Device (PORT_USI)!
+Fehler ==>     cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+[myi2c.asm,96] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SCL)!
+    96: 000113   0000  cbi     PORT_USI, PIN_SCL ; die Clockleitung SCL wieder auf 0
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; wieder als ausgang und bleibt als HIGH!!!
+[myi2c.asm,97] 007: Undefinierte Konstante, Variable, Marke oder Device (DDR_USI)!
+Fehler ==>     sbi     DDR_USI,  PIN_SDA ; wieder als ausgang und bleibt als HIGH!!!
+[myi2c.asm,97] 007: Undefinierte Konstante, Variable, Marke oder Device (PIN_SDA)!
+    97: 000114   0000  sbi     DDR_USI,  PIN_SDA ; wieder als ausgang und bleibt als HIGH!!!
+    98: 000115   DFB6  rcall   Warte4us            ; oder Warte5us ?
+    99: 000116   910F  pop     r16
+   100: i2c_ext2:   ; Ende
+   101: 000117   918F  pop     rAddr
+   102: 000118   9508  ret
+   103: i2c_write:  ; rAddr, rData // rErr  // rCurBit, r16
+   104: 000119   938F  push    rAddr
+   105: 00011A   7F8E  andi    rAddr, 0xFE       ; Slave Adresse in rAddr, LSB 0 weil Write
+   106: 00011B   DFC6  rcall   i2c_start
+   107: 00011C   DFCF  rcall   i2c_send; wenn set Carry => Fehler
+   108: 00011D   F048  brcs    i2c_rw_ext
+   109: 00011E   2F89  mov     rAddr, rData ; alls ok ... byte senden 
+   110: 00011F   DFCC  rcall   i2c_send  
+   111: 000120   C006  rjmp    i2c_rw_ext
+   112: i2c_read:   ; rAddr, rData // rErr  // rCurBit, r16
+   113: 000121   938F  push    rAddr
+   114: 000122   6081  ori     rAddr, 0x01  ; Slave Adresse in rAddr, LSB 1 weil read
+   115: 000123   DFBE  rcall   i2c_start
+   116: 000124   DFC7  rcall   i2c_send
+   117: 000125   F008  brcs    i2c_rw_ext
+   118: 000126   DFD8  rcall   i2c_recive
+   119: i2c_rw_ext: ; wenn set Carry => Fehler
+   120: 000127   DFC0  rcall   i2c_stop
+   121: 000128   CFEE  rjmp    i2c_ext2
+  Fortsetzung mit Datei attiny85_lcd_i2c_test.asm
+Kompilation abgebrochen, 96 Fehler!
